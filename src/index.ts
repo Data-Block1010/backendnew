@@ -1,0 +1,670 @@
+// src/app.ts
+import 'reflect-metadata';
+import { DataSource } from 'typeorm';
+import { SecretKeyService } from './services/secretKeyService';
+
+import express from 'express';
+import multer from 'multer';
+import Web3 from "web3";
+import cors from 'cors'; 
+import helmet from 'helmet'; 
+import { generateProof } from './services/proofService';
+import { verifyProofOnChain, verifyProofOffChain } from './services/verifyProofService';
+import { DataController } from './controllers/dataController';
+import { authenticate } from './middleware/authMiddleware';
+import { AuthService } from './services/authService';
+import { setupSwagger } from './swaggerConfig';
+import { User } from './entitiy/User';
+import { UserDataHash } from './entitiy/UserDataHash'; 
+import { ZkSyncService } from "./services/zkSyncService";
+
+const web3 = new Web3(process.env.SEPOLIA_RPC_URL || "https://rpc.sepolia-api.lisk.com");
+
+const storage = multer.memoryStorage();
+const upload = multer({ storage: storage });
+
+// Create a new instance of DataSource
+const AppDataSource = new DataSource({
+    type: 'sqlite',
+    database: 'database.sqlite',
+    entities: [User, UserDataHash], // Ensure both entities are here
+    synchronize: true,
+    logging: false,
+});
+
+// Initialize the connection
+AppDataSource.initialize()
+    .then(async () => {
+        const app = express();
+          // Add security headers using helmet
+          app.use(helmet());
+
+          // Enable CORS for all routes
+          const corsOptions = {
+            origin: ['http://localhost:3000', 'https://backend-web3-phgb.onrender.com', 'https://secure-data.on-fleek.app'],
+            methods: ['GET', 'POST', 'PUT', 'DELETE'],
+            allowedHeaders: ['Content-Type', 'Authorization'],
+        };
+        
+        app.use(cors(corsOptions)); // Apply CORS options
+        
+  
+          
+        app.use(express.json());
+
+        setupSwagger(app); // Setup Swagger
+
+        // Register API
+        /**
+         * @swagger
+         * /register:
+         *   post:
+         *     summary: Register a new user
+         *     tags: [Auth]
+         *     requestBody:
+         *       required: true
+         *       content:
+         *         application/json:
+         *           schema:
+         *             type: object
+         *             required:
+         *               - username
+         *               - password
+         *             properties:
+         *               username:
+         *                 type: string
+         *                 example: "user123"
+         *               password:
+         *                 type: string
+         *                 example: "strongpassword"
+         *     responses:
+         *       201:
+         *         description: User registered successfully
+         *       500:
+         *         description: Server error
+         */
+        app.post('/register', async (req, res) => {
+            try {
+                const { username, password } = req.body;
+                await AuthService.register(username, password);
+                res.status(201).json({ message: 'User registered' });
+            } catch (err) {
+                const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred';
+                res.status(500).json({ error: errorMessage });
+            }
+        });
+
+        // Login API
+        /**
+         * @swagger
+         * /login:
+         *   post:
+         *     summary: Log in a user
+         *     tags: [Auth]
+         *     requestBody:
+         *       required: true
+         *       content:
+         *         application/json:
+         *           schema:
+         *             type: object
+         *             required:
+         *               - username
+         *               - password
+         *             properties:
+         *               username:
+         *                 type: string
+         *                 example: "user123"
+         *               password:
+         *                 type: string
+         *                 example: "strongpassword"
+         *     responses:
+         *       200:
+         *         description: Successful login
+         *       401:
+         *         description: Invalid credentials
+         */
+        app.post('/login', async (req, res) => {
+            try {
+                const { username, password } = req.body;
+                const token = await AuthService.login(username, password);
+                res.json({ token });
+            } catch (err) {
+                const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred';
+                res.status(401).json({ error: errorMessage });
+            }
+        });
+
+     /**
+ * @swagger
+ * /generate-proof:
+ *   post:
+ *     summary: Generate a cryptographic proof
+ *     tags: [Proofs]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - ownerAddress
+ *               - secretKey
+ *               - circuitWasmPath
+ *               - zkeyPath
+ *             properties:
+ *               ownerAddress:
+ *                 type: string
+ *                 description: The owner address of the data
+ *               secretKey:
+ *                 type: string
+ *                 description: The secret key for decryption
+ *               circuitWasmPath:
+ *                 type: string
+ *                 description: Path to the circuit's WASM file
+ *               zkeyPath:
+ *                 type: string
+ *                 description: Path to the zkey file
+ *     responses:
+ *       200:
+ *         description: Proof generated successfully
+ *       500:
+ *         description: Server error
+ */
+app.post('/generate-proof', authenticate, async (req, res) => {
+    await DataController.generateUserProof(req, res);
+});
+
+
+        // Verify Proof API
+        /**
+         * @swagger
+         * /verify-proof:
+         *   post:
+         *     summary: Verify a cryptographic proof
+         *     tags: [Proofs]
+         *     requestBody:
+         *       required: true
+         *       content:
+         *         application/json:
+         *           schema:
+         *             type: object
+         *             required:
+         *               - proof
+         *               - publicSignals
+         *               - verifierAddress
+         *               - verificationKeyPath
+         *             properties:
+         *               proof:
+         *                 type: object
+         *                 description: The cryptographic proof to verify
+         *               publicSignals:
+         *                 type: array
+         *                 items:
+         *                   type: string
+         *                 description: The public signals generated with the proof
+         *               verifierAddress:
+         *                 type: string
+         *                 description: The Ethereum address of the verifier contract
+         *               verificationKeyPath:
+         *                 type: string
+         *                 description: Path to the verification key file
+         *     responses:
+         *       200:
+         *         description: Proof verification result
+         *       500:
+         *         description: Server error
+         */
+        app.post('/verify-proof', async (req, res) => {
+            try {
+                const { proof, publicSignals, verifierAddress, verificationKeyPath } = req.body;
+
+                // Off-chain verification
+                const isValidOffChain = await verifyProofOffChain(proof, publicSignals, verificationKeyPath);
+
+                // On-chain verification
+                const isValidOnChain = await verifyProofOnChain(proof, publicSignals, verifierAddress);
+
+                res.json({ validOffChain: isValidOffChain, validOnChain: isValidOnChain });
+            } catch (err) {
+                const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred';
+                res.status(500).json({ error: errorMessage });
+            }
+        });
+
+        // Store Data API with File Upload and Secret Key
+        /**
+         * @swagger
+         * /store-data:
+         *   post:
+         *     summary: Store data with a file upload and secret key
+         *     tags: [Data Management]
+         *     security:
+         *       - bearerAuth: []
+         *     requestBody:
+         *       required: true
+         *       content:
+         *         multipart/form-data:
+         *           schema:
+         *             type: object
+         *             properties:
+         *               file:
+         *                 type: string
+         *                 format: binary
+         *                 description: The file to store
+         *               secretKey:
+         *                 type: string
+         *                 description: The secret key for encryption
+         *     responses:
+         *       200:
+         *         description: Data stored successfully
+         *       401:
+         *         description: Unauthorized
+         *       500:
+         *         description: Server error
+         */
+        app.post('/store-data', upload.single('file'), authenticate, DataController.storeData);
+        // View Data API
+    /**
+     * @swagger
+     * /view-data:
+     *   post:
+     *     summary: View data for a user
+     *     tags: [Data Management]
+     *     security:
+     *       - bearerAuth: []
+     *     requestBody:
+     *       required: true
+     *       content:
+     *         application/json:
+     *           schema:
+     *             type: object
+     *             required:
+     *               - ownerAddress
+     *               - dataHash
+     *               - secretKey
+     *             properties:
+     *               ownerAddress:
+     *                 type: string
+     *                 description: The owner's address for the data
+     *               dataHash:
+     *                 type: string
+     *                 description: The data hash (CID) of the stored file
+     *               secretKey:
+     *                 type: string
+     *                 description: The secret key for decryption
+     *     responses:
+     *       200:
+     *         description: Data retrieved and decrypted successfully
+     *       404:
+     *         description: Data not found
+     *       500:
+     *         description: Server error
+     */
+    app.post('/view-data', authenticate, DataController.viewData); // This adds the view-data endpoint
+
+        // Add /submit-transaction endpoint
+        /**
+         * @swagger
+         * /submit-transaction:
+         *   post:
+         *     summary: Submit a signed transaction
+         *     tags: [Blockchain]
+         *     security:
+         *       - bearerAuth: []
+         *     requestBody:
+         *       required: true
+         *       content:
+         *         application/json:
+         *           schema:
+         *             type: object
+         *             properties:
+         *               signedTx:
+         *                 type: string
+         *                 description: The signed transaction data
+         *     responses:
+         *       200:
+         *         description: Transaction submitted successfully
+         *       400:
+         *         description: Bad request, missing signed transaction
+         *       500:
+         *         description: Server error
+         */
+        app.post('/submit-transaction', authenticate, async (req, res) => {
+            try {
+                const { signedTx } = req.body;
+
+                if (!signedTx) {
+                    return res.status(400).json({ error: 'Signed transaction is required' });
+                }
+
+                const receipt = await web3.eth.sendSignedTransaction(signedTx.rawTransaction);
+                console.log("Transaction receipt:", receipt);
+            } catch (err) {
+                const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred';
+                res.status(500).json({ error: errorMessage });
+            }
+        });
+        // Endpoint to get user details
+/**
+ * @swagger
+ * /user-details:
+ *   get:
+ *     summary: Get the details of the logged-in user
+ *     tags: [User]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: User details fetched successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 id:
+ *                   type: string
+ *                   description: The ID of the user, extracted from the token
+ *                   example: "7bda62e1-5f95-4a11-8b4f-52f536120c35"
+ *                 username:
+ *                   type: string
+ *                   description: The username of the user
+ *                   example: "user123"
+ *                 isActive:
+ *                   type: boolean
+ *                   description: Indicates whether the user is active
+ *                   example: true
+ *       401:
+ *         description: Unauthorized - Token is invalid or missing
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   description: Error message
+ *                   example: "No token provided"
+ *       404:
+ *         description: User not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   description: Error message
+ *                   example: "User not found"
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   description: Error message
+ *                   example: "Failed to fetch user details"
+ */
+
+        app.get('/user-details', authenticate, async (req, res) => {
+            try {
+                //console.log(req)
+                const { userId } = req.body;
+                const user = await User.findOne({ where: { id: userId } });
+                if (!user) {
+                    return res.status(404).json({ error: 'User not found' });
+                }
+                res.json({ id: user.id, username: user.username, isActive: user.isActive });
+            } catch (error) {
+                res.status(500).json({ error: 'Failed to fetch user details' });
+            }
+        });
+
+       // Endpoint to get user data hashes
+/**
+ * @swagger
+ * /user-data-hashes:
+ *   get:
+ *     summary: Get all data hashes of the logged-in user
+ *     tags: [User]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Data hashes fetched successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   dataHash:
+ *                     type: string
+ *                     description: The hash of the stored data
+ *                     example: "QmT5NvUtoM5n6JK3G3XsjFktkRjaQ2eD72erRbxAho99rT"
+ *                   filename:
+ *                     type: string
+ *                     description: The name of the uploaded file
+ *                     example: "document.pdf"
+ *                   encryptedSecret:
+ *                     type: string
+ *                     description: The encrypted secret used for data decryption
+ *                     example: "AES-128-CBC"
+ *                   createdAt:
+ *                     type: string
+ *                     format: date-time
+ *                     description: The timestamp when the data was stored
+ *                     example: "2023-09-04T14:23:45Z"
+ *       401:
+ *         description: Unauthorized - Token is invalid or missing
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   description: Error message
+ *                   example: "No token provided"
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   description: Error message
+ *                   example: "Failed to fetch user data hashes"
+ */
+
+        app.get('/user-data-hashes', authenticate, async (req, res) => {
+            try {
+                //console.log(req)
+                const { userId } = req.body;
+                const userDataHashes = await UserDataHash.find({ where: { user: { id: userId } } });
+                res.json(userDataHashes.map(data => ({
+                    dataHash: data.dataHash,
+                    filename: data.filename,
+                    encryptedSecret: data.encryptedSecret,
+                    createdAt: data.createdAt
+                })));
+            } catch (error) {
+                res.status(500).json({ error: 'Failed to fetch user data hashes' });
+            }
+        });
+
+
+
+       // Update Data API with File Upload and Secret Key
+    /**
+     * @swagger
+     * /update-data:
+     *   post:
+     *     summary: Update data with a file upload, secret key, ownerAddress, and username
+     *     tags: [Data Management]
+     *     security:
+     *       - bearerAuth: []
+     *     requestBody:
+     *       required: true
+     *       content:
+     *         multipart/form-data:
+     *           schema:
+     *             type: object
+     *             properties:
+     *               file:
+     *                 type: string
+     *                 format: binary
+     *                 description: The new file to update
+     *               secretKey:
+     *                 type: string
+     *                 description: The secret key for encryption
+     *      
+     *               username:
+     *                 type: string
+     *                 description: The username of the data owner
+     *               cid:
+     *                 type: string
+     *                 description: The CID of the data to update
+     *     responses:
+     *       200:
+     *         description: Data updated successfully
+     *       404:
+     *         description: Data not found
+     *       500:
+     *         description: Server error
+     */
+    app.post('/update-data', upload.single('file'), authenticate, DataController.updateData); 
+
+
+        // Delete Data API
+        /**
+         * @swagger
+         * /delete-data:
+         *   post:
+         *     summary: Delete data
+         *     tags: [Data Management]
+         *     security:
+         *       - bearerAuth: []
+         *     requestBody:
+         *       content:
+         *         application/json:
+         *           schema:
+         *             type: object
+         *             properties:
+         *               cid:
+         *                 type: string
+         *                 description: The CID of the data to delete
+         *     responses:
+         *       200:
+         *         description: Data deleted successfully
+         *       401:
+         *         description: Unauthorized
+         *       500:
+         *         description: Server error
+         */
+        app.post('/delete-data', authenticate, DataController.deleteData);
+
+      /**
+ * @swagger
+ * /grant-access:
+ *   post:
+ *     summary: Grant access to data
+ *     tags: [Access Management]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - userAddress
+ *             properties:
+ *               userAddress:
+ *                 type: string
+ *                 description: The address of the user to grant access
+ *     responses:
+ *       200:
+ *         description: Access granted successfully
+ *       401:
+ *         description: Unauthorized
+ *       500:
+ *         description: Server error
+ */
+app.post('/grant-access', authenticate, DataController.grantAccess);
+
+       
+
+       /**
+ * @swagger
+ * /revoke-access:
+ *   post:
+ *     summary: Revoke access to data
+ *     tags: [Access Management]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - userAddress
+ *             properties:
+ *               userAddress:
+ *                 type: string
+ *                 description: The address of the user to revoke access from
+ *     responses:
+ *       200:
+ *         description: Access revoked successfully
+ *       401:
+ *         description: Unauthorized
+ *       500:
+ *         description: Server error
+ */
+app.post('/revoke-access', authenticate, DataController.revokeAccess);
+
+
+        // Secret Key Generation API
+        /**
+         * @swagger
+         * /generate-key:
+         *   get:
+         *     summary: Generate a secure secret key
+         *     tags: [Key Management]
+         *     responses:
+         *       200:
+         *         description: Secret key generated successfully
+         *         content:
+         *           application/json:
+         *             schema:
+         *               type: object
+         *               properties:
+         *                 secretKey:
+         *                   type: string
+         *                   description: Generated secret key
+         *       500:
+         *         description: Server error
+         */
+        app.get('/generate-key', (req, res) => {
+            try {
+                const secretKey = SecretKeyService.generateSecretKey();
+                res.json({ secretKey });
+            } catch (err) {
+                const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred';
+                res.status(500).json({ error: errorMessage });
+            }
+        });
+
+        const PORT = process.env.PORT || 3000;
+        app.listen(PORT, () => {
+            console.log(`Server running on port ${PORT}`);
+        });
+    });
