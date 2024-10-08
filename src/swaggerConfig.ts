@@ -17,7 +17,7 @@ export function setupSwagger(app: Express) {
                     description: 'Development server',
                 },
                 {
-                    url: 'https://backend-web3-phgb.onrender.com',
+                    url: 'https://backendnew-4hei.onrender.com',
                     description: 'Production server (Render)',
                 },
             ],
