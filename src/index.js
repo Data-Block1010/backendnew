@@ -38,7 +38,7 @@ AppDataSource.initialize()
     app.use((0, helmet_1.default)());
     // Enable CORS for all routes
     const corsOptions = {
-        origin: ['http://localhost:3000', 'https://backend-web3-phgb.onrender.com'],
+        origin: ['http://localhost:3000', 'https://backendnew-4hei.onrender.com/', 'https://secure-data.on-fleek.app'],
         methods: ['GET', 'POST', 'PUT', 'DELETE'],
         allowedHeaders: ['Content-Type', 'Authorization'],
     };
@@ -634,6 +634,97 @@ AppDataSource.initialize()
             const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred';
             res.status(500).json({ error: errorMessage });
         }
+    });
+    // Dummy Data Endpoint for Verification
+    /**
+     * @swagger
+     * /api/kyc/verify_user:
+     *   get:
+     *     summary: Get dummy user data for verification
+     *     tags: [KYC]
+     *     responses:
+     *       200:
+     *         description: Dummy user data retrieved successfully
+     *         content:
+     *           application/json:
+     *             schema:
+     *               type: object
+     *               properties:
+     *                 userId:
+     *                   type: string
+     *                   example: "12345"
+     *                 fullName:
+     *                   type: string
+     *                   example: "John Doe"
+     *                 email:
+     *                   type: string
+     *                   example: "john.doe@example.com"
+     *                 phoneNumber:
+     *                   type: string
+     *                   example: "+1234567890"
+     *                 dateOfBirth:
+     *                   type: string
+     *                   example: "1990-01-01"
+     *                 address:
+     *                   type: object
+     *                   properties:
+     *                     street:
+     *                       type: string
+     *                       example: "123 Main St"
+     *                     city:
+     *                       type: string
+     *                       example: "Anytown"
+     *                     state:
+     *                       type: string
+     *                       example: "CA"
+     *                     postalCode:
+     *                       type: string
+     *                       example: "12345"
+     *                     country:
+     *                       type: string
+     *                       example: "USA"
+     *                 documents:
+     *                   type: array
+     *                   items:
+     *                     type: object
+     *                     properties:
+     *                       documentType:
+     *                         type: string
+     *                         example: "passport"
+     *                       documentNumber:
+     *                         type: string
+     *                         example: "A12345678"
+     *                       issueDate:
+     *                         type: string
+     *                         example: "2015-01-01"
+     *                       expiryDate:
+     *                         type: string
+     *                         example: "2025-01-01"
+     */
+    app.get('/api/kyc/verify_user', (req, res) => {
+        const dummyUserData = {
+            userId: "12345",
+            fullName: "John Doe",
+            email: "john.doe@example.com",
+            phoneNumber: "+1234567890",
+            dateOfBirth: "1990-01-01",
+            address: {
+                street: "123 Main St",
+                city: "Anytown",
+                state: "CA",
+                postalCode: "12345",
+                country: "USA"
+            },
+            documents: [
+                {
+                    documentType: "passport",
+                    documentNumber: "A12345678",
+                    issueDate: "2015-01-01",
+                    expiryDate: "2025-01-01"
+                }
+            ]
+        };
+        res.json(dummyUserData);
     });
     const PORT = process.env.PORT || 3000;
     app.listen(PORT, () => {
