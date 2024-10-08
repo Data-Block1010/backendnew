@@ -41,7 +41,7 @@ AppDataSource.initialize()
 
           // Enable CORS for all routes
           const corsOptions = {
-            origin: ['http://localhost:3000', 'https://backend-web3-phgb.onrender.com', 'https://secure-data.on-fleek.app'],
+            origin: ['http://localhost:3000', 'https://backendnew-4hei.onrender.com/', 'https://secure-data.on-fleek.app'],
             methods: ['GET', 'POST', 'PUT', 'DELETE'],
             allowedHeaders: ['Content-Type', 'Authorization'],
         };
