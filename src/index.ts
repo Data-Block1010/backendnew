@@ -147,11 +147,25 @@ AppDataSource.initialize()
  *           schema:
  *             type: object
  *             required:
- *               - inputData
+ *               - username
+ *               - secretKey
  *               - circuitWasmPath
  *               - zkeyPath
- *               - userId
+ *               - filename  
+ *               - inputData
  *             properties:
+ *               username:
+ *                 type: string
+ *                 description: The username of the user requesting the proof
+ *                 example: "user123"
+ *               secretKey:
+ *                 type: string
+ *                 description: The secret key for encryption
+ *                 example: "your_secret_key"
+ *               filename:  
+ *                 type: string
+ *                 description: The name of the file to find the corresponding data hash
+ *                 example: "example_file.txt"
  *               inputData:
  *                 type: object
  *                 required:
@@ -184,10 +198,6 @@ AppDataSource.initialize()
  *                 type: string
  *                 description: Path to the zkey file
  *                 default: "path/to/verification_key.zkey"
- *               userId:
- *                 type: string
- *                 description: Unique identifier for the user session
- *                 default: "user123"
  *     responses:
  *       200:
  *         description: Proof generated successfully
@@ -208,9 +218,20 @@ AppDataSource.initialize()
  *         description: Server error
  */
 app.post('/generate-proof', authenticate, async (req, res) => {
-    await DataController.generateUserProof(req, res);
+    try {
+        console.log("Received request body:", req.body); // Log the entire request body
+        
+       
+        // console.log("Extracted parameters:", { username, filename, circuitWasmPath, zkeyPath, inputData }); // Log extracted parameters
+        //  // const { username, secretKey, filename, circuitWasmPath, zkeyPath, inputData } = req.body;
+        await DataController.generateUserProof(req, res); // Call the method to generate proof
+    } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : "Error in /generate-proof:";
+        console.error("Error occurred:", errorMessage); // Log the error message
+        // console.error("Stack Trace:", error.stack); // Log the stack trace for more context
+        res.status(500).json({ error: "Internal server error" });
+    }
 });
-
 
         // Verify Proof API
         /**

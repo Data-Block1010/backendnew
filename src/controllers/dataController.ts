@@ -50,31 +50,56 @@ export class DataController {
     // Other methods stay the same
     static async generateUserProof(req: Request, res: Response) {
         try {
-            const { ownerAddress, secretKey, circuitWasmPath, zkeyPath, dataHash } = req.body;
-            const userId = req.body; // Assuming you have user data in the request
-
+            const { username, secretKey, filename, circuitWasmPath, zkeyPath, inputData } = req.body;
+            if (!username || !secretKey || !filename || !circuitWasmPath || !zkeyPath || !inputData) {
+                return res.status(400).json({ error: "Missing required fields" });
+            }
+            console.log("Request Body:", req.body); // Log the entire request body
+    
+            const user = await User.findOne({ where: { username } });
+            console.log("User found:", user); // Log the user object
+    
+            if (!user) {
+                console.error("User not found for username:", username);
+                return res.status(404).json({ error: "User not found" });
+            }
+    
             // Fetch the data hash from zkSync L2 network
-            const dataRecord = await zkSyncService.getDataByHash(ownerAddress, dataHash);
-
+            const userDataHash = await UserDataHash.findOne({ where: { user, filename } });
+            console.log("User Data Hash found:", userDataHash); // Log the user data hash
+            if (!userDataHash) {
+                console.error("User data hash not found for filename:", filename);
+                return res.status(404).json({ error: "User data hash not found" });
+            }
+            let hash = userDataHash.dataHash;
+            if (!hash) {
+                
+               return  hash = inputData;
+            }
+    
             // Fetch the encrypted data from IPFS using the data hash (CID)
-            const fileUrl = `https://gateway.pinata.cloud/ipfs/${dataRecord}`;
+            const fileUrl = `https://gateway.pinata.cloud/ipfs/${hash}`; // Use the dataHash property
+            console.log("Fetching encrypted data from URL:", fileUrl); // Log the URL being fetched
             const response = await axios.get(fileUrl);
             const encryptedData = response.data;
-
+    
             // Decrypt the data using the provided secret key
+            console.log("Encrypted data fetched successfully."); // Log success message
             const decryptedData = IpfsService.decryptData(encryptedData, secretKey);
-
+            console.log("Decrypted data successfully."); // Log success message
+    
             // Generate a cryptographic proof
             const { proof, publicSignals } = await generateProof(
                 decryptedData,
                 circuitWasmPath,
                 zkeyPath,
-                userId
+                user.id // Assuming userId is the user's ID
             );
-
+    
             res.json({ proof, publicSignals });
         } catch (error: any) {
             console.error("Error in generateUserProof:", error.message);
+            console.error("Stack Trace:", error.stack); // Log the stack trace for more context
             res.status(500).json({ error: error.message });
         }
     }

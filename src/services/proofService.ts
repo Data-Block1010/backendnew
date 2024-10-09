@@ -40,6 +40,7 @@ export async function generateProof(
 
         // Read and return the generated proof and public signals
         const proof = JSON.parse(await fs.promises.readFile(proofJsonPath, 'utf8'));
+        
         const publicSignals = JSON.parse(await fs.promises.readFile(publicJsonPath, 'utf8'));
 
         // Optionally clean up the temporary files after generation (if needed)
