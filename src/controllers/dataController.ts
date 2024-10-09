@@ -113,8 +113,8 @@ export class DataController {
             userDataHash.encryptedSecret = secretKey; // Assuming you store encrypted secrets
             userDataHash.user = user;
             await userDataHash.save(); // Save the entry in the database
-
-            res.json({ txHash, cid, message: "Data stored successfully" });
+      
+            res.json({ txHash, message: "Data stored successfully" });
         } catch (error: any) {
             console.error("Error in storeData:", error.message);
             res.status(500).json({ error: error.message });
