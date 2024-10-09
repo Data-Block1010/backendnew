@@ -134,7 +134,7 @@ AppDataSource.initialize()
             }
         });
 
-     /**
+/**
  * @swagger
  * /generate-proof:
  *   post:
@@ -147,26 +147,63 @@ AppDataSource.initialize()
  *           schema:
  *             type: object
  *             required:
- *               - ownerAddress
- *               - secretKey
+ *               - inputData
  *               - circuitWasmPath
  *               - zkeyPath
+ *               - userId
  *             properties:
- *               ownerAddress:
- *                 type: string
- *                 description: The owner address of the data
- *               secretKey:
- *                 type: string
- *                 description: The secret key for decryption
+ *               inputData:
+ *                 type: object
+ *                 required:
+ *                   - value
+ *                   - threshold1
+ *                   - threshold2
+ *                   - operation
+ *                 properties:
+ *                   value:
+ *                     type: integer
+ *                     description: The value to check against the thresholds
+ *                     default: 10
+ *                   threshold1:
+ *                     type: integer
+ *                     description: The first threshold for comparison
+ *                     default: 5
+ *                   threshold2:
+ *                     type: integer
+ *                     description: The second threshold for comparison
+ *                     default: 15
+ *                   operation:
+ *                     type: integer
+ *                     description: The operation type (0=greater than, 1=less than, 2=equal, 3=range check)
+ *                     default: 3
  *               circuitWasmPath:
  *                 type: string
  *                 description: Path to the circuit's WASM file
+ *                 default: "path/to/selective_disclosure.wasm"
  *               zkeyPath:
  *                 type: string
  *                 description: Path to the zkey file
+ *                 default: "path/to/verification_key.zkey"
+ *               userId:
+ *                 type: string
+ *                 description: Unique identifier for the user session
+ *                 default: "user123"
  *     responses:
  *       200:
  *         description: Proof generated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 proof:
+ *                   type: object
+ *                   description: The generated cryptographic proof
+ *                 publicSignals:
+ *                   type: array
+ *                   items:
+ *                     type: string
+ *                   description: The public signals generated with the proof
  *       500:
  *         description: Server error
  */
