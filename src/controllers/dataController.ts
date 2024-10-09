@@ -94,11 +94,12 @@ export class DataController {
 
             // Upload encrypted content to IPFS and hash it
             const cid = await IpfsService.uploadFile(Buffer.from(encryptedContent));
+            console.log(cid)
             const dataHash = IpfsService.hashData(cid);
 
             // Store the data hash on the zkSync L2 network
             const txHash = await zkSyncService.storeData(dataHash);
-
+            console.log(txHash)
             // Find the user by username
             const user = await User.findOne({ where: { username } });
 
@@ -114,7 +115,7 @@ export class DataController {
             userDataHash.user = user;
             await userDataHash.save(); // Save the entry in the database
       
-            res.json({ txHash, message: "Data stored successfully" });
+            res.json({ txHash, cid, message: "Data stored successfully" });
         } catch (error: any) {
             console.error("Error in storeData:", error.message);
             res.status(500).json({ error: error.message });
