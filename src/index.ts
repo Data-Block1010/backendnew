@@ -699,251 +699,251 @@ app.post('/revoke-access', authenticate, DataController.revokeAccess);
                 res.status(500).json({ error: errorMessage });
             }
         });
-        // Dummy Data Endpoint for Verification
-        /**
-         * @swagger
-         * /api/kyc/verify_user:
-         *   get:
-         *     summary: Get dummy user data for verification
-         *     tags: [KYC]
-         *     responses:
-         *       200:
-         *         description: Dummy user data retrieved successfully
-         *         content:
-         *           application/json:
-         *             schema:
-         *               type: object
-         *               properties:
-         *                 userId:
-         *                   type: string
-         *                   example: "12345"
-         *                 fullName:
-         *                   type: string
-         *                   example: "John Doe"
-         *                 email:
-         *                   type: string
-         *                   example: "john.doe@example.com"
-         *                 phoneNumber:
-         *                   type: string
-         *                   example: "+1234567890"
-         *                 dateOfBirth:
-         *                   type: string
-         *                   example: "1990-01-01"
-         *                 address:
-         *                   type: object
-         *                   properties:
-         *                     street:
-         *                       type: string
-         *                       example: "123 Main St"
-         *                     city:
-         *                       type: string
-         *                       example: "Anytown"
-         *                     state:
-         *                       type: string
-         *                       example: "CA"
-         *                     postalCode:
-         *                       type: string
-         *                       example: "12345"
-         *                     country:
-         *                       type: string
-         *                       example: "USA"
-         *                 documents:
-         *                   type: array
-         *                   items:
-         *                     type: object
-         *                     properties:
-         *                       documentType:
-         *                         type: string
-         *                         example: "passport"
-         *                       documentNumber:
-         *                         type: string
-         *                         example: "A12345678"
-         *                       issueDate:
-         *                         type: string
-         *                         example: "2015-01-01"
-         *                       expiryDate:
-         *                         type: string
-         *                         example: "2025-01-01"
-         */
-        app.get('/api/kyc/verify_user', (req, res) => {
-            const dummyUserData = {
-                userId: "12345",
-                fullName: "John Doe",
-                email: "john.doe@example.com",
-                phoneNumber: "+1234567890",
-                dateOfBirth: "1990-01-01",
-                address: {
-                    street: "123 Main St",
-                    city: "Anytown",
-                    state: "CA",
-                    postalCode: "12345",
-                    country: "USA"
-                },
-                documents: [
-                    {
-                        documentType: "passport",
-                        documentNumber: "A12345678",
-                        issueDate: "2015-01-01",
-                        expiryDate: "2025-01-01"
-                    }
-                ]
-            };
-            res.json(dummyUserData);
-        });
-/**
- * @swagger
- * /api/kyc/verify_user:
- *   post:  // Change from 'get' to 'post'
- *     summary: Verify user data for KYC
- *     tags: [KYC]
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               userId:
- *                 type: string
- *                 example: "12345"
- *               fullName:
- *                 type: string
- *                 example: "John Doe"
- *               email:
- *                 type: string
- *                 example: "john.doe@example.com"
- *               phoneNumber:
- *                 type: string
- *                 example: "+1234567890"
- *               dateOfBirth:
- *                 type: string
- *                 example: "1990-01-01"
- *               address:
- *                 type: object
- *                 properties:
- *                   street:
- *                     type: string
- *                     example: "123 Main St"
- *                   city:
- *                     type: string
- *                     example: "Anytown"
- *                   state:
- *                     type: string
- *                     example: "CA"
- *                   postalCode:
- *                     type: string
- *                     example: "12345"
- *                   country:
- *                     type: string
- *                     example: "USA"
- *               documents:
- *                 type: array
- *                 items:
- *                   type: object
- *                   properties:
- *                     documentType:
- *                       type: string
- *                       example: "passport"
- *                     documentNumber:
- *                       type: string
- *                       example: "A12345678"
- *                     issueDate:
- *                       type: string
- *                       example: "2015-01-01"
- *                     expiryDate:
- *                       type: string
- *                       example: "2025-01-01"
- *     responses:
- *       200:
- *         description: User data verified successfully
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                   example: "User data verified successfully."
- *                 userData:
- *                   type: object
- *                   properties:
- *                     userId:
- *                       type: string
- *                       example: "12345"
- *                     fullName:
- *                       type: string
- *                       example: "John Doe"
- *                     email:
- *                       type: string
- *                       example: "john.doe@example.com"
- *                     phoneNumber:
- *                       type: string
- *                       example: "+1234567890"
- *                     dateOfBirth:
- *                       type: string
- *                       example: "1990-01-01"
- *                     address:
- *                       type: object
- *                       properties:
- *                         street:
- *                           type: string
- *                           example: "123 Main St"
- *                         city:
- *                           type: string
- *                           example: "Anytown"
- *                         state:
- *                           type: string
- *                           example: "CA"
- *                         postalCode:
- *                           type: string
- *                           example: "12345"
- *                         country:
- *                           type: string
- *                           example: "USA"
- *                     documents:
- *                       type: array
- *                       items:
- *                         type: object
- *                         properties:
- *                           documentType:
- *                             type: string
- *                             example: "passport"
- *                           documentNumber:
- *                             type: string
- *                             example: "A12345678"
- *                           issueDate:
- *                             type: string
- *                             example: "2015-01-01"
- *                           expiryDate:
- *                             type: string
- *                             example: "2025-01-01"
- */
-app.post('/api/kyc/verify_user', (req, res) => {
-    const { userId, fullName, email, phoneNumber, dateOfBirth, address, documents } = req.body;
+//         // Dummy Data Endpoint for Verification
+//         /**
+//          * @swagger
+//          * /api/kyc/verify_user:
+//          *   get:
+//          *     summary: Get dummy user data for verification
+//          *     tags: [KYC]
+//          *     responses:
+//          *       200:
+//          *         description: Dummy user data retrieved successfully
+//          *         content:
+//          *           application/json:
+//          *             schema:
+//          *               type: object
+//          *               properties:
+//          *                 userId:
+//          *                   type: string
+//          *                   example: "12345"
+//          *                 fullName:
+//          *                   type: string
+//          *                   example: "John Doe"
+//          *                 email:
+//          *                   type: string
+//          *                   example: "john.doe@example.com"
+//          *                 phoneNumber:
+//          *                   type: string
+//          *                   example: "+1234567890"
+//          *                 dateOfBirth:
+//          *                   type: string
+//          *                   example: "1990-01-01"
+//          *                 address:
+//          *                   type: object
+//          *                   properties:
+//          *                     street:
+//          *                       type: string
+//          *                       example: "123 Main St"
+//          *                     city:
+//          *                       type: string
+//          *                       example: "Anytown"
+//          *                     state:
+//          *                       type: string
+//          *                       example: "CA"
+//          *                     postalCode:
+//          *                       type: string
+//          *                       example: "12345"
+//          *                     country:
+//          *                       type: string
+//          *                       example: "USA"
+//          *                 documents:
+//          *                   type: array
+//          *                   items:
+//          *                     type: object
+//          *                     properties:
+//          *                       documentType:
+//          *                         type: string
+//          *                         example: "passport"
+//          *                       documentNumber:
+//          *                         type: string
+//          *                         example: "A12345678"
+//          *                       issueDate:
+//          *                         type: string
+//          *                         example: "2015-01-01"
+//          *                       expiryDate:
+//          *                         type: string
+//          *                         example: "2025-01-01"
+//          */
+//         app.get('/api/kyc/verify_user', (req, res) => {
+//             const dummyUserData = {
+//                 userId: "12345",
+//                 fullName: "John Doe",
+//                 email: "john.doe@example.com",
+//                 phoneNumber: "+1234567890",
+//                 dateOfBirth: "1990-01-01",
+//                 address: {
+//                     street: "123 Main St",
+//                     city: "Anytown",
+//                     state: "CA",
+//                     postalCode: "12345",
+//                     country: "USA"
+//                 },
+//                 documents: [
+//                     {
+//                         documentType: "passport",
+//                         documentNumber: "A12345678",
+//                         issueDate: "2015-01-01",
+//                         expiryDate: "2025-01-01"
+//                     }
+//                 ]
+//             };
+//             res.json(dummyUserData);
+//         });
+// /**
+//  * @swagger
+//  * /api/kyc/verify_user:
+//  *   post:  // Change from 'get' to 'post'
+//  *     summary: Verify user data for KYC
+//  *     tags: [KYC]
+//  *     requestBody:
+//  *       required: true
+//  *       content:
+//  *         application/json:
+//  *           schema:
+//  *             type: object
+//  *             properties:
+//  *               userId:
+//  *                 type: string
+//  *                 example: "12345"
+//  *               fullName:
+//  *                 type: string
+//  *                 example: "John Doe"
+//  *               email:
+//  *                 type: string
+//  *                 example: "john.doe@example.com"
+//  *               phoneNumber:
+//  *                 type: string
+//  *                 example: "+1234567890"
+//  *               dateOfBirth:
+//  *                 type: string
+//  *                 example: "1990-01-01"
+//  *               address:
+//  *                 type: object
+//  *                 properties:
+//  *                   street:
+//  *                     type: string
+//  *                     example: "123 Main St"
+//  *                   city:
+//  *                     type: string
+//  *                     example: "Anytown"
+//  *                   state:
+//  *                     type: string
+//  *                     example: "CA"
+//  *                   postalCode:
+//  *                     type: string
+//  *                     example: "12345"
+//  *                   country:
+//  *                     type: string
+//  *                     example: "USA"
+//  *               documents:
+//  *                 type: array
+//  *                 items:
+//  *                   type: object
+//  *                   properties:
+//  *                     documentType:
+//  *                       type: string
+//  *                       example: "passport"
+//  *                     documentNumber:
+//  *                       type: string
+//  *                       example: "A12345678"
+//  *                     issueDate:
+//  *                       type: string
+//  *                       example: "2015-01-01"
+//  *                     expiryDate:
+//  *                       type: string
+//  *                       example: "2025-01-01"
+//  *     responses:
+//  *       200:
+//  *         description: User data verified successfully
+//  *         content:
+//  *           application/json:
+//  *             schema:
+//  *               type: object
+//  *               properties:
+//  *                 message:
+//  *                   type: string
+//  *                   example: "User data verified successfully."
+//  *                 userData:
+//  *                   type: object
+//  *                   properties:
+//  *                     userId:
+//  *                       type: string
+//  *                       example: "12345"
+//  *                     fullName:
+//  *                       type: string
+//  *                       example: "John Doe"
+//  *                     email:
+//  *                       type: string
+//  *                       example: "john.doe@example.com"
+//  *                     phoneNumber:
+//  *                       type: string
+//  *                       example: "+1234567890"
+//  *                     dateOfBirth:
+//  *                       type: string
+//  *                       example: "1990-01-01"
+//  *                     address:
+//  *                       type: object
+//  *                       properties:
+//  *                         street:
+//  *                           type: string
+//  *                           example: "123 Main St"
+//  *                         city:
+//  *                           type: string
+//  *                           example: "Anytown"
+//  *                         state:
+//  *                           type: string
+//  *                           example: "CA"
+//  *                         postalCode:
+//  *                           type: string
+//  *                           example: "12345"
+//  *                         country:
+//  *                           type: string
+//  *                           example: "USA"
+//  *                     documents:
+//  *                       type: array
+//  *                       items:
+//  *                         type: object
+//  *                         properties:
+//  *                           documentType:
+//  *                             type: string
+//  *                             example: "passport"
+//  *                           documentNumber:
+//  *                             type: string
+//  *                             example: "A12345678"
+//  *                           issueDate:
+//  *                             type: string
+//  *                             example: "2015-01-01"
+//  *                           expiryDate:
+//  *                             type: string
+//  *                             example: "2025-01-01"
+//  */
+// app.post('/api/kyc/verify_user', (req, res) => {
+//     const { userId, fullName, email, phoneNumber, dateOfBirth, address, documents } = req.body;
 
-    // Basic validation
-    if (!userId || !fullName || !email || !phoneNumber || !dateOfBirth || !address || !documents) {
-        return res.status(400).json({ error: "All fields are required." });
-    }
+//     // Basic validation
+//     if (!userId || !fullName || !email || !phoneNumber || !dateOfBirth || !address || !documents) {
+//         return res.status(400).json({ error: "All fields are required." });
+//     }
 
-    // Here you could add logic to verify the user data
+//     // Here you could add logic to verify the user data
 
-    // Respond with the received data or a success message
-    const responseData = {
-        userId,
-        fullName,
-        email,
-        phoneNumber,
-        dateOfBirth,
-        address,
-        documents
-    };
+//     // Respond with the received data or a success message
+//     const responseData = {
+//         userId,
+//         fullName,
+//         email,
+//         phoneNumber,
+//         dateOfBirth,
+//         address,
+//         documents
+//     };
 
-    res.json({
-        message: "User data verified successfully.",
-        userData: responseData
-    });
-});
+//     res.json({
+//         message: "User data verified successfully.",
+//         userData: responseData
+//     });
+// });
 
         const PORT = process.env.PORT || 3000;
         app.listen(PORT, () => {
