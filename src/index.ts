@@ -753,10 +753,219 @@ app.post('/revoke-access', authenticate, DataController.revokeAccess);
             };
             res.json(dummyUserData);
         });
+/**
+ * @swagger
+ * /api/kyc/verify_user:
+ *   post:  // Change from 'get' to 'post'
+ *     summary: Verify user data for KYC
+ *     tags: [KYC]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               userId:
+ *                 type: string
+ *                 example: "12345"
+ *               fullName:
+ *                 type: string
+ *                 example: "John Doe"
+ *               email:
+ *                 type: string
+ *                 example: "john.doe@example.com"
+ *               phoneNumber:
+ *                 type: string
+ *                 example: "+1234567890"
+ *               dateOfBirth:
+ *                 type: string
+ *                 example: "1990-01-01"
+ *               address:
+ *                 type: object
+ *                 properties:
+ *                   street:
+ *                     type: string
+ *                     example: "123 Main St"
+ *                   city:
+ *                     type: string
+ *                     example: "Anytown"
+ *                   state:
+ *                     type: string
+ *                     example: "CA"
+ *                   postalCode:
+ *                     type: string
+ *                     example: "12345"
+ *                   country:
+ *                     type: string
+ *                     example: "USA"
+ *               documents:
+ *                 type: array
+ *                 items:
+ *                   type: object
+ *                   properties:
+ *                     documentType:
+ *                       type: string
+ *                       example: "passport"
+ *                     documentNumber:
+ *                       type: string
+ *                       example: "A12345678"
+ *                     issueDate:
+ *                       type: string
+ *                       example: "2015-01-01"
+ *                     expiryDate:
+ *                       type: string
+ *                       example: "2025-01-01"
+ *     responses:
+ *       200:
+ *         description: User data verified successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "User data verified successfully."
+ *                 userData:
+ *                   type: object
+ *                   properties:
+ *                     userId:
+ *                       type: string
+ *                       example: "12345"
+ *                     fullName:
+ *                       type: string
+ *                       example: "John Doe"
+ *                     email:
+ *                       type: string
+ *                       example: "john.doe@example.com"
+ *                     phoneNumber:
+ *                       type: string
+ *                       example: "+1234567890"
+ *                     dateOfBirth:
+ *                       type: string
+ *                       example: "1990-01-01"
+ *                     address:
+ *                       type: object
+ *                       properties:
+ *                         street:
+ *                           type: string
+ *                           example: "123 Main St"
+ *                         city:
+ *                           type: string
+ *                           example: "Anytown"
+ *                         state:
+ *                           type: string
+ *                           example: "CA"
+ *                         postalCode:
+ *                           type: string
+ *                           example: "12345"
+ *                         country:
+ *                           type: string
+ *                           example: "USA"
+ *                     documents:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           documentType:
+ *                             type: string
+ *                             example: "passport"
+ *                           documentNumber:
+ *                             type: string
+ *                             example: "A12345678"
+ *                           issueDate:
+ *                             type: string
+ *                             example: "2015-01-01"
+ *                           expiryDate:
+ *                             type: string
+ *                             example: "2025-01-01"
+ */
+app.post('/api/kyc/verify_user', (req, res) => {
+    const { userId, fullName, email, phoneNumber, dateOfBirth, address, documents } = req.body;
 
+    // Basic validation
+    if (!userId || !fullName || !email || !phoneNumber || !dateOfBirth || !address || !documents) {
+        return res.status(400).json({ error: "All fields are required." });
+    }
+
+    // Here you could add logic to verify the user data
+
+    // Respond with the received data or a success message
+    const responseData = {
+        userId,
+        fullName,
+        email,
+        phoneNumber,
+        dateOfBirth,
+        address,
+        documents
+    };
+
+    res.json({
+        message: "User data verified successfully.",
+        userData: responseData
+    });
+});
 
         const PORT = process.env.PORT || 3000;
         app.listen(PORT, () => {
             console.log(`Server running on port ${PORT}`);
         });
     });
+    // {
+    //     "issuer": "SecureData",
+    //     "desc": "A secure platform for identity verification using KYC processes with Zero-Knowledge Proofs.",
+    //     "website": "https://backendnew-4hei.onrender.com/api/kyc/verify_user",
+    //     "breakWall": true,
+    //     "APIs": [
+    //       {
+    //         "host": "www.backendnew-4hei.onrender.com",
+    //         "intercept": {
+    //           "url": "api/kyc/verify_user",
+    //           "method": "GET",  
+    //           "query": [
+    //             {
+    //               "key": "userId", 
+    //               "value": "12345",
+    //               "verify": true
+    //             }
+    //           ]
+    //         },
+    //         "assert": [
+    //           {
+    //             "key": "userId",
+    //             "value": "12345",
+    //             "operation": "="
+    //           },
+    //           {
+    //             "key": "fullName",
+    //             "value": "John Doe",
+    //             "operation": "="
+    //           },
+    //           {
+    //             "key": "email",
+    //             "value": "john.doe@example.com",
+    //             "operation": "="
+    //           },
+    //           {
+    //             "key": "phoneNumber",
+    //             "value": "+1234567890",
+    //             "operation": "="
+    //           },
+    //           {
+    //             "key": "dateOfBirth",
+    //             "value": "1990-01-01",
+    //             "operation": "="
+    //           }
+    //         ],
+    //         "nullifier": "userId"
+    //       }
+    //     ],
+    //     "HRCondition": [
+    //       "User must have completed KYC verification"
+    //     ],
+    //     "tips": {
+    //       "message": "Please ensure that your KYC documents are ready. After logging in, click the 'Start Verification' button to proceed."
+    //     }
+    //   } 
