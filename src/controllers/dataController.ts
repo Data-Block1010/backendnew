@@ -64,21 +64,23 @@ export class DataController {
                 return res.status(404).json({ error: "User not found" });
             }
     
-            // Fetch the data hash from zkSync L2 network
+            // Fetch the user data hash from the database
             const userDataHash = await UserDataHash.findOne({ where: { user, filename } });
             console.log("User Data Hash found:", userDataHash); // Log the user data hash
             if (!userDataHash) {
                 console.error("User data hash not found for filename:", filename);
                 return res.status(404).json({ error: "User data hash not found" });
             }
-            let hash = userDataHash.dataHash;
-            if (!hash) {
-                
-               return  hash = inputData;
+    
+            // Use the cid instead of dataHash
+            const cid = userDataHash.cid; // Get the CID from userDataHash
+            if (!cid) {
+                console.error("CID not found for filename:", filename);
+                return res.status(404).json({ error: "CID not found" });
             }
     
-            // Fetch the encrypted data from IPFS using the data hash (CID)
-            const fileUrl = `https://gateway.pinata.cloud/ipfs/${hash}`; // Use the dataHash property
+            // Fetch the encrypted data from IPFS using the CID
+            const fileUrl = `https://gateway.pinata.cloud/ipfs/${cid}`; // Use the CID property
             console.log("Fetching encrypted data from URL:", fileUrl); // Log the URL being fetched
             const response = await axios.get(fileUrl);
             const encryptedData = response.data;
@@ -108,38 +110,40 @@ export class DataController {
         try {
             const { secretKey, username } = req.body; // Assuming username is provided
             const file = (req as MulterRequest).file;
-
+    
             if (!file) {
                 return res.status(400).json({ error: "No file uploaded" });
             }
-
+    
             // Convert the file buffer to a string and encrypt the content
             const fileContent = file.buffer.toString('base64');
             const encryptedContent = IpfsService.encryptData(fileContent, secretKey);
-
+    
             // Upload encrypted content to IPFS and hash it
             const cid = await IpfsService.uploadFile(Buffer.from(encryptedContent));
-            console.log(cid)
+            console.log(cid);
             const dataHash = IpfsService.hashData(cid);
-
+    
             // Store the data hash on the zkSync L2 network
             const txHash = await zkSyncService.storeData(dataHash);
-            console.log(txHash)
+            console.log(txHash);
+            
             // Find the user by username
             const user = await User.findOne({ where: { username } });
-
+    
             if (!user) {
                 return res.status(404).json({ error: "User not found" });
             }
-
-            // Store the data hash, filename, and encrypted secret in the database
+    
+            // Store the data hash, filename, cid, and encrypted secret in the database
             const userDataHash = new UserDataHash();
             userDataHash.dataHash = dataHash;
             userDataHash.filename = file.originalname; // Store the file's original name
+            userDataHash.cid = cid; // Store the CID
             userDataHash.encryptedSecret = secretKey; // Assuming you store encrypted secrets
             userDataHash.user = user;
             await userDataHash.save(); // Save the entry in the database
-      
+    
             res.json({ txHash, cid, message: "Data stored successfully" });
         } catch (error: any) {
             console.error("Error in storeData:", error.message);

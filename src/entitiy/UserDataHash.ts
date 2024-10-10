@@ -12,6 +12,10 @@ export class UserDataHash extends BaseEntity {
     @Column()
     filename!: string;
 
+    @Column()
+    cid!: string; // Add this line to store the CID
+
+
     // Store the secret (encrypted) associated with this data
     @Column()
     encryptedSecret!: string;

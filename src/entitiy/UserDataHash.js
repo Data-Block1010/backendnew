@@ -30,6 +30,10 @@ __decorate([
 __decorate([
     (0, typeorm_1.Column)(),
     __metadata("design:type", String)
+], UserDataHash.prototype, "cid", void 0);
+__decorate([
+    (0, typeorm_1.Column)(),
+    __metadata("design:type", String)
 ], UserDataHash.prototype, "encryptedSecret", void 0);
 __decorate([
     (0, typeorm_1.ManyToOne)(() => User_1.User, (user) => user.dataHashes, { onDelete: 'CASCADE' }),

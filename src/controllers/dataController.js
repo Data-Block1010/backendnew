@@ -78,19 +78,21 @@ class DataController {
                 console.error("User not found for username:", username);
                 return res.status(404).json({ error: "User not found" });
             }
-            // Fetch the data hash from zkSync L2 network
+            // Fetch the user data hash from the database
             const userDataHash = await UserDataHash_1.UserDataHash.findOne({ where: { user, filename } });
             console.log("User Data Hash found:", userDataHash); // Log the user data hash
             if (!userDataHash) {
                 console.error("User data hash not found for filename:", filename);
                 return res.status(404).json({ error: "User data hash not found" });
             }
-            let hash = userDataHash.dataHash;
-            if (!hash) {
-                return hash = inputData;
+            // Use the cid instead of dataHash
+            const cid = userDataHash.cid; // Get the CID from userDataHash
+            if (!cid) {
+                console.error("CID not found for filename:", filename);
+                return res.status(404).json({ error: "CID not found" });
             }
-            // Fetch the encrypted data from IPFS using the data hash (CID)
-            const fileUrl = `https://gateway.pinata.cloud/ipfs/${hash}`; // Use the dataHash property
+            // Fetch the encrypted data from IPFS using the CID
+            const fileUrl = `https://gateway.pinata.cloud/ipfs/${cid}`; // Use the CID property
             console.log("Fetching encrypted data from URL:", fileUrl); // Log the URL being fetched
             const response = await axios_1.default.get(fileUrl);
             const encryptedData = response.data;
@@ -131,10 +133,11 @@ class DataController {
             if (!user) {
                 return res.status(404).json({ error: "User not found" });
             }
-            // Store the data hash, filename, and encrypted secret in the database
+            // Store the data hash, filename, cid, and encrypted secret in the database
             const userDataHash = new UserDataHash_1.UserDataHash();
             userDataHash.dataHash = dataHash;
             userDataHash.filename = file.originalname; // Store the file's original name
+            userDataHash.cid = cid; // Store the CID
             userDataHash.encryptedSecret = secretKey; // Assuming you store encrypted secrets
             userDataHash.user = user;
             await userDataHash.save(); // Save the entry in the database
