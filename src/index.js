@@ -38,9 +38,15 @@ AppDataSource.initialize()
     app.use((0, helmet_1.default)());
     // Enable CORS for all routes
     const corsOptions = {
-        origin: ['http://localhost:3000', 'https://backendnew-4hei.onrender.com/', 'https://secure-data.on-fleek.app', 'https://securedata.on-fleek.app'],
+        origin: [
+            'http://localhost:3000',
+            'https://backendnew-4hei.onrender.com/',
+            'https://secure-data.on-fleek.app',
+            'https://securedata.on-fleek.app'
+        ],
         methods: ['GET', 'POST', 'PUT', 'DELETE'],
         allowedHeaders: ['Content-Type', 'Authorization'],
+        credentials: true, // Allow credentials (cookies, authorization headers, etc.)
     };
     app.use((0, cors_1.default)(corsOptions)); // Apply CORS options
     app.use(express_1.default.json());
