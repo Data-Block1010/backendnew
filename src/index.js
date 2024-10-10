@@ -38,7 +38,7 @@ AppDataSource.initialize()
     app.use((0, helmet_1.default)());
     // Enable CORS for all routes
     const corsOptions = {
-        origin: ['http://localhost:3000', 'https://backendnew-4hei.onrender.com/', 'https://secure-data.on-fleek.app'],
+        origin: ['http://localhost:3000', 'https://backendnew-4hei.onrender.com/', 'https://secure-data.on-fleek.app', 'https://securedata.on-fleek.app'],
         methods: ['GET', 'POST', 'PUT', 'DELETE'],
         allowedHeaders: ['Content-Type', 'Authorization'],
     };
@@ -208,20 +208,20 @@ AppDataSource.initialize()
      *       500:
      *         description: Server error
      */
-    app.post('/generate-proof', authMiddleware_1.authenticate, dataController_1.DataController.generateUserProof);
-    // app.post('/generate-proof', authenticate, async (req, res) => {
-    //     // try {
-    //     //     console.log("Received request body:", req.body); // Log the entire request body
-    //     //     // console.log("Extracted parameters:", { username, filename, circuitWasmPath, zkeyPath, inputData }); // Log extracted parameters
-    //     //     //  // const { username, secretKey, filename, circuitWasmPath, zkeyPath, inputData } = req.body;
-    //     //     await DataController.generateUserProof(req, res); // Call the method to generate proof
-    //     // } catch (error) {
-    //     //     const errorMessage = error instanceof Error ? error.message : "Error in /generate-proof:";
-    //     //     console.error("Error occurred:", errorMessage); // Log the error message
-    //     //     // console.error("Stack Trace:", error.stack); // Log the stack trace for more context
-    //     //     res.status(500).json({ error: "Internal server error" });
-    //     // }
-    // });
+    app.post('/generate-proof', authMiddleware_1.authenticate, async (req, res) => {
+        try {
+            console.log("Received request body:", req.body); // Log the entire request body
+            // console.log("Extracted parameters:", { username, filename, circuitWasmPath, zkeyPath, inputData }); // Log extracted parameters
+            //  // const { username, secretKey, filename, circuitWasmPath, zkeyPath, inputData } = req.body;
+            await dataController_1.DataController.generateUserProof(req, res); // Call the method to generate proof
+        }
+        catch (error) {
+            const errorMessage = error instanceof Error ? error.message : "Error in /generate-proof:";
+            console.error("Error occurred:", errorMessage); // Log the error message
+            // console.error("Stack Trace:", error.stack); // Log the stack trace for more context
+            res.status(500).json({ error: "Internal server error" });
+        }
+    });
     // Verify Proof API
     /**
      * @swagger
