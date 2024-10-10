@@ -101,7 +101,7 @@ class DataController {
             const decryptedData = ipfsService_1.IpfsService.decryptData(encryptedData, secretKey);
             console.log("Decrypted data successfully."); // Log success message
             // Generate a cryptographic proof
-            const { proof, publicSignals } = await (0, proofService_1.generateProof)(decryptedData, circuitWasmPath, zkeyPath, user.id // Assuming userId is the user's ID
+            const { proof, publicSignals } = await (0, proofService_1.generateProof)(inputData, circuitWasmPath, zkeyPath, user.id // Assuming userId is the user's ID
             );
             res.json({ proof, publicSignals });
         }

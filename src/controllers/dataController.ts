@@ -92,7 +92,7 @@ export class DataController {
     
             // Generate a cryptographic proof
             const { proof, publicSignals } = await generateProof(
-                decryptedData,
+                inputData,
                 circuitWasmPath,
                 zkeyPath,
                 user.id // Assuming userId is the user's ID
