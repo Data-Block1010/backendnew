@@ -45,7 +45,7 @@ async function verifyProofOffChain(proof, publicSignals, verificationKeyPath) {
 }
 async function verifyProofOnChain(proof, publicSignals, verifierAddress) {
     const rpcUrl = process.env.LISK_RPC_URL;
-    const privateKey = process.env.ACCOUNT_PRIVATE_KEY;
+    const privateKey = "0xcd1e3ad2e67471d576b5fdca01b715a1f2149d41516e3524fc51589aa44cb9a7";
     if (!rpcUrl || !privateKey) {
         throw new Error('LISK_RPC_URL or ACCOUNT_PRIVATE_KEY environment variables are not defined');
     }
