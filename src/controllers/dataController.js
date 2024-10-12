@@ -30,8 +30,9 @@ exports.DataController = void 0;
 const multer_1 = __importDefault(require("multer"));
 const ipfsService_1 = require("../services/ipfsService");
 const zkSyncService_1 = require("../services/zkSyncService");
-const UserDataHash_1 = require("../entitiy/UserDataHash"); // Import UserDataHash entity
-const User_1 = require("../entitiy/User"); // Import User entity
+const UserDataHash_1 = __importDefault(require("../models/UserDataHash")); // Import UserDataHash model
+const User_1 = __importDefault(require("../models/User")); // Import User model
+const proof_1 = __importDefault(require("../models/proof"));
 const axios_1 = __importDefault(require("axios"));
 const dotenv = __importStar(require("dotenv"));
 const proofService_1 = require("../services/proofService");
@@ -64,56 +65,61 @@ class DataController {
             res.status(500).json({ error: error.message });
         }
     }
-    // Other methods stay the same
     static async generateUserProof(req, res) {
         try {
             const { username, secretKey, filename, circuitWasmPath, zkeyPath, inputData } = req.body;
             if (!username || !secretKey || !filename || !circuitWasmPath || !zkeyPath || !inputData) {
                 return res.status(400).json({ error: "Missing required fields" });
             }
-            console.log("Request Body:", req.body); // Log the entire request body
-            const user = await User_1.User.findOne({ where: { username } });
-            console.log("User found:", user); // Log the user object
+            console.log("Request Body:", req.body);
+            const user = await User_1.default.findOne({ username }); // Mongoose query to find the user
             if (!user) {
                 console.error("User not found for username:", username);
                 return res.status(404).json({ error: "User not found" });
             }
-            // Fetch the user data hash from the database
-            const userDataHash = await UserDataHash_1.UserDataHash.findOne({ where: { user, filename } });
-            console.log("User Data Hash found:", userDataHash); // Log the user data hash
+            const userDataHash = await UserDataHash_1.default.findOne({ user: user._id, filename }); // Find the hash in the database
             if (!userDataHash) {
                 console.error("User data hash not found for filename:", filename);
                 return res.status(404).json({ error: "User data hash not found" });
             }
-            // Use the cid instead of dataHash
-            const cid = userDataHash.cid; // Get the CID from userDataHash
+            const cid = userDataHash.cid; // Fetch the CID
             if (!cid) {
                 console.error("CID not found for filename:", filename);
                 return res.status(404).json({ error: "CID not found" });
             }
-            // Fetch the encrypted data from IPFS using the CID
-            const fileUrl = `https://gateway.pinata.cloud/ipfs/${cid}`; // Use the CID property
-            console.log("Fetching encrypted data from URL:", fileUrl); // Log the URL being fetched
+            // Fetch the encrypted data from IPFS
+            const fileUrl = `https://gateway.pinata.cloud/ipfs/${cid}`;
             const response = await axios_1.default.get(fileUrl);
             const encryptedData = response.data;
-            // Decrypt the data using the provided secret key
-            console.log("Encrypted data fetched successfully."); // Log success message
+            // Decrypt the data using the secret key
             const decryptedData = ipfsService_1.IpfsService.decryptData(encryptedData, secretKey);
-            console.log("Decrypted data successfully."); // Log success message
-            // Generate a cryptographic proof
-            const { proof, publicSignals } = await (0, proofService_1.generateProof)(inputData, circuitWasmPath, zkeyPath, user.id // Assuming userId is the user's ID
+            // Generate a cryptographic proof using the decrypted data
+            const { proof, publicSignals } = await (0, proofService_1.generateProof)(inputData, circuitWasmPath, zkeyPath, user._id // Pass user ID for proof generation
             );
+            // Save the proof and public signals to MongoDB
+            const newProof = new proof_1.default({
+                userId: user._id,
+                proofData: proof,
+                publicSignals: publicSignals,
+            });
+            await newProof.save();
+            // Return the proof and public signals in the response
             res.json({ proof, publicSignals });
         }
         catch (error) {
             console.error("Error in generateUserProof:", error.message);
-            console.error("Stack Trace:", error.stack); // Log the stack trace for more context
+            console.error("Stack Trace:", error.stack);
             res.status(500).json({ error: error.message });
         }
     }
     static async storeData(req, res) {
         try {
-            const { secretKey, username } = req.body; // Assuming username is provided
+            if (!req.user) {
+                return res.status(401).json({ message: 'Unauthorized' });
+            }
+            const userId = req.user;
+            console.log("message", userId, req);
+            const { secretKey } = req.body; // Assuming username is provided
             const file = req.file;
             if (!file) {
                 return res.status(400).json({ error: "No file uploaded" });
@@ -129,17 +135,17 @@ class DataController {
             const txHash = await zkSyncService.storeData(dataHash);
             console.log(txHash);
             // Find the user by username
-            const user = await User_1.User.findOne({ where: { username } });
+            const user = await User_1.default.findOne({ _id: userId }); // Mongoose query
             if (!user) {
                 return res.status(404).json({ error: "User not found" });
             }
             // Store the data hash, filename, cid, and encrypted secret in the database
-            const userDataHash = new UserDataHash_1.UserDataHash();
+            const userDataHash = new UserDataHash_1.default();
             userDataHash.dataHash = dataHash;
             userDataHash.filename = file.originalname; // Store the file's original name
             userDataHash.cid = cid; // Store the CID
             userDataHash.encryptedSecret = secretKey; // Assuming you store encrypted secrets
-            userDataHash.user = user;
+            userDataHash.user = user._id; // Store the user's ID
             await userDataHash.save(); // Save the entry in the database
             res.json({ txHash, cid, message: "Data stored successfully" });
         }
@@ -180,12 +186,12 @@ class DataController {
             }
             // Update the data on the zkSync L2 network using the found index
             const txHash = await zkSyncService.updateData(index, newDataHash);
-            // Find the user by ownerAddress and update their stored data hash
-            const user = await User_1.User.findOne({ where: { username } });
+            // Find the user by username
+            const user = await User_1.default.findOne({ username }); // Mongoose query
             if (!user) {
                 return res.status(404).json({ error: "User not found" });
             }
-            const userDataHash = await UserDataHash_1.UserDataHash.findOne({ where: { user, dataHash: cid } });
+            const userDataHash = await UserDataHash_1.default.findOne({ user: user._id, dataHash: cid }); // Mongoose query
             if (!userDataHash) {
                 return res.status(404).json({ error: "Data hash not found for the user" });
             }
@@ -205,11 +211,11 @@ class DataController {
         try {
             const { cid, username } = req.body;
             // Find the user by username
-            const user = await User_1.User.findOne({ where: { username } });
+            const user = await User_1.default.findOne({ username }); // Mongoose query
             if (!user) {
                 return res.status(404).json({ error: "User not found" });
             }
-            const userDataHash = await UserDataHash_1.UserDataHash.findOne({ where: { user, dataHash: cid } });
+            const userDataHash = await UserDataHash_1.default.findOne({ user: user._id, dataHash: cid }); // Mongoose query
             if (!userDataHash) {
                 return res.status(404).json({ error: "Data hash not found for the user" });
             }
@@ -217,7 +223,7 @@ class DataController {
             const nullHash = ipfsService_1.IpfsService.hashData("");
             const txHash = await zkSyncService.deleteData(nullHash);
             // Remove the data from the database
-            await userDataHash.remove();
+            await UserDataHash_1.default.deleteOne({ _id: userDataHash._id });
             res.json({ txHash });
         }
         catch (error) {
@@ -258,13 +264,13 @@ class DataController {
             }
             // Verify and get userId from token
             const decoded = authService_1.AuthService.verifyToken(token);
-            const user = await User_1.User.findOne({ where: { id: decoded.userId }, relations: ["dataHashes"] });
+            const user = await User_1.default.findById(decoded.userId).populate("dataHashes"); // Mongoose query
             if (!user) {
                 return res.status(404).json({ error: "User not found" });
             }
             // Return user details (excluding sensitive information like password hash)
             res.json({
-                id: user.id,
+                id: user._id,
                 username: user.username,
                 isActive: user.isActive,
                 dataHashes: user.dataHashes
@@ -285,7 +291,7 @@ class DataController {
             }
             // Verify and get userId from token
             const decoded = authService_1.AuthService.verifyToken(token);
-            const user = await User_1.User.findOne({ where: { id: decoded.userId }, relations: ["dataHashes"] });
+            const user = await User_1.default.findById(decoded.userId).populate("dataHashes"); // Mongoose query
             if (!user) {
                 return res.status(404).json({ error: "User not found" });
             }

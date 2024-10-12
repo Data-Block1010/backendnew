@@ -2,7 +2,7 @@ import { exec } from 'child_process';
 import * as fs from 'fs';
 import path from 'path';
 import { promisify } from 'util';
-
+import Proof from '../models/proof';
 // Use `exec` in async mode
 const execAsync = promisify(exec);
 
@@ -50,5 +50,28 @@ export async function generateProof(
     } catch (error) {
         console.error("Error generating proof:", error);
         throw new Error("Proof generation failed");
+    }
+    
+}
+// Proof Management Functions
+export class ProofService {
+    // Get all proofs for a user
+    static async getAllProofsForUser(userId: string) {
+        return Proof.find({ userId });
+    }
+
+    // Get proof by ID
+    static async getProofById(proofId: string) {
+        return Proof.findById(proofId);
+    }
+
+    // Update proof by ID
+    static async updateProof(proofId: string, updateData: any) {
+        return Proof.findByIdAndUpdate(proofId, updateData, { new: true });
+    }
+
+    // Delete proof by ID
+    static async deleteProof(proofId: string) {
+        return Proof.findByIdAndDelete(proofId);
     }
 }

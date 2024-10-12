@@ -1,4 +1,5 @@
 "use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
 const mongoose = require('mongoose');
 const dbConnect = async () => {
     try {
@@ -13,4 +14,4 @@ const dbConnect = async () => {
         process.exit(1);
     }
 };
-module.exports = dbConnect;
+exports.default = dbConnect;

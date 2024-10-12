@@ -1,4 +1,4 @@
-// models/KYC.ts
+// src/models/KYC.ts
 import mongoose, { Document, Schema } from 'mongoose';
 
 // Define the KYC interface
@@ -9,6 +9,7 @@ export interface IKYC extends Document {
     nationality: string;
     kycVerified: boolean;
     createdAt: Date;
+    user: mongoose.Types.ObjectId; // Reference to User
     getAge(): number; // Method to calculate age
 }
 
@@ -38,6 +39,11 @@ const KYCSchema: Schema = new Schema({
     createdAt: {
         type: Date,
         default: Date.now, // Automatically set the creation date
+    },
+    user: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User', // Reference to User model
+        required: true, // Ensure that a user is associated with the KYC record
     },
 }, { timestamps: true });
 
