@@ -54,25 +54,41 @@ async function verifyProofOnChain(proof, publicSignals, verifierAddress) {
     web3.eth.accounts.wallet.add(account);
     const verifierContract = new web3.eth.Contract(Groth16Verifier_json_1.default.abi, verifierAddress);
     // Prepare the proof parameters
+    // const proofParams = [
+    //     proof.pi_a.slice(0, 2),
+    //     [
+    //         proof.pi_b[0].reverse(),
+    //         proof.pi_b[1].reverse()
+    //     ],
+    //     proof.pi_c.slice(0, 2),
+    //     publicSignals
+    // ];
     const proofParams = [
-        proof.pi_a.slice(0, 2),
+        proof.pi_a.slice(0, 2), // Take exactly two elements from pi_a
         [
-            proof.pi_b[0].reverse(),
+            proof.pi_b[0].reverse(), // Reverse each element of pi_b
             proof.pi_b[1].reverse()
         ],
-        proof.pi_c.slice(0, 2),
-        publicSignals
+        proof.pi_c.slice(0, 2), // Take exactly two elements from pi_c
+        publicSignals // Pass the full array of publicSignals (which should have 5 elements)
     ];
-    // Estimate gas and convert it to a string
-    const gasEstimate = (await verifierContract.methods.verifyProof(...proofParams).estimateGas({ from: account.address })).toString();
+    console.log("message", proofParams);
+    // Log proofParams for debugging
+    console.log('Proof Params:', proofParams);
+    // Set a higher gas limit manually
+    const gasLimit = "5000000"; // Example higher gas limit
     // Send the transaction to verify the proof
     const receipt = await verifierContract.methods.verifyProof(...proofParams).send({
         from: account.address,
-        gas: gasEstimate, // Ensure gas is passed as a string
+        gas: gasLimit, // Ensure a high gas limit for debugging
     });
+    // Log the transaction receipt for debugging
+    console.log('Transaction Receipt:', receipt);
     // Check if events exist and the ProofVerified event was emitted
     if (receipt.events && receipt.events.ProofVerified) {
-        return receipt.events.ProofVerified.returnValues[0];
+        // Log the full event object for debugging
+        console.log('ProofVerified Event:', receipt.events.ProofVerified);
+        return receipt.events.ProofVerified.returnValues; // Return full event object for better context
     }
     // If the event is not present, assume the proof was not verified successfully
     return false;

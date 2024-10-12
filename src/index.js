@@ -7,9 +7,11 @@ Object.defineProperty(exports, "__esModule", { value: true });
 require("reflect-metadata");
 const typeorm_1 = require("typeorm");
 const secretKeyService_1 = require("./services/secretKeyService");
+const db_1 = __importDefault(require("./db"));
 const express_1 = __importDefault(require("express"));
 const multer_1 = __importDefault(require("multer"));
 const web3_1 = __importDefault(require("web3"));
+const mongoose_1 = __importDefault(require("mongoose"));
 const cors_1 = __importDefault(require("cors"));
 const helmet_1 = __importDefault(require("helmet"));
 const verifyProofService_1 = require("./services/verifyProofService");
@@ -17,16 +19,24 @@ const dataController_1 = require("./controllers/dataController");
 const authMiddleware_1 = require("./middleware/authMiddleware");
 const authService_1 = require("./services/authService");
 const swaggerConfig_1 = require("./swaggerConfig");
-const User_1 = require("./entitiy/User");
-const UserDataHash_1 = require("./entitiy/UserDataHash");
+const str_numService_1 = __importDefault(require("../src/services/str_numService"));
+// import { User } from './entitiy/User';
+// import { UserDataHash } from './entitiy/UserDataHash';
+const proofController_1 = __importDefault(require("./controllers/proofController"));
+const KYC_1 = __importDefault(require("./models/KYC")); // Import the KYC model
+const User_1 = __importDefault(require("./models/User"));
+const proof_1 = __importDefault(require("./models/proof")); // Import the User model
+const UserDataHash_1 = __importDefault(require("./models/UserDataHash")); // Import the UserDataHash model
+const kycController_1 = require("./controllers/kycController"); // Import the KYC controller
 const web3 = new web3_1.default(process.env.SEPOLIA_RPC_URL || "https://rpc.sepolia-api.lisk.com");
 const storage = multer_1.default.memoryStorage();
 const upload = (0, multer_1.default)({ storage: storage });
+(0, db_1.default)();
 // Create a new instance of DataSource
 const AppDataSource = new typeorm_1.DataSource({
     type: 'sqlite',
     database: 'database.sqlite',
-    entities: [User_1.User, UserDataHash_1.UserDataHash], // Ensure both entities are here
+    entities: [User_1.default, UserDataHash_1.default], // Ensure both entities are here
     synchronize: true,
     logging: false,
 });
@@ -150,7 +160,6 @@ AppDataSource.initialize()
      *               - circuitWasmPath
      *               - zkeyPath
      *               - filename
-     *               - inputData
      *             properties:
      *               username:
      *                 type: string
@@ -160,42 +169,18 @@ AppDataSource.initialize()
      *                 type: string
      *                 description: The secret key for encryption
      *                 example: "your_secret_key"
+     *               circuitWasmPath:
+     *                 type: string
+     *                 description: The path to the circuit WASM file
+     *                 example: "path/to/circuit.wasm"
+     *               zkeyPath:
+     *                 type: string
+     *                 description: The path to the Zkey file
+     *                 example: "path/to/verification.zkey"
      *               filename:
      *                 type: string
      *                 description: The name of the file to find the corresponding data hash
      *                 example: "example_file.txt"
-     *               inputData:
-     *                 type: object
-     *                 required:
-     *                   - value
-     *                   - threshold1
-     *                   - threshold2
-     *                   - operation
-     *                 properties:
-     *                   value:
-     *                     type: integer
-     *                     description: The value to check against the thresholds
-     *                     default: 10
-     *                   threshold1:
-     *                     type: integer
-     *                     description: The first threshold for comparison
-     *                     default: 5
-     *                   threshold2:
-     *                     type: integer
-     *                     description: The second threshold for comparison
-     *                     default: 15
-     *                   operation:
-     *                     type: integer
-     *                     description: The operation type (0=greater than, 1=less than, 2=equal, 3=range check)
-     *                     default: 3
-     *               circuitWasmPath:
-     *                 type: string
-     *                 description: Path to the circuit's WASM file
-     *                 default: "path/to/selective_disclosure.wasm"
-     *               zkeyPath:
-     *                 type: string
-     *                 description: Path to the zkey file
-     *                 default: "path/to/verification_key.zkey"
      *     responses:
      *       200:
      *         description: Proof generated successfully
@@ -217,15 +202,36 @@ AppDataSource.initialize()
      */
     app.post('/generate-proof', authMiddleware_1.authenticate, async (req, res) => {
         try {
-            console.log("Received request body:", req.body); // Log the entire request body
-            // console.log("Extracted parameters:", { username, filename, circuitWasmPath, zkeyPath, inputData }); // Log extracted parameters
-            //  // const { username, secretKey, filename, circuitWasmPath, zkeyPath, inputData } = req.body;
-            await dataController_1.DataController.generateUserProof(req, res); // Call the method to generate proof
+            if (!req.user) {
+                return res.status(401).json({ message: 'Unauthorized' });
+            }
+            const userId = req.user; // Get the user ID from the request
+            //const { username, secretKey, circuitWasmPath, zkeyPath, filename } = req.body;
+            // Fetch the user's KYC details
+            const kycDetails = await KYC_1.default.findOne({ user: userId });
+            if (!kycDetails) {
+                return res.status(404).json({ error: 'KYC details not found for the user' });
+            }
+            // Construct the inputData from KYC details
+            req.body.inputData = {
+                dateOfBirth: new Date(kycDetails.dateOfBirth).getTime(), // Convert to timestamp
+                currentDate: Date.now(), // Current timestamp
+                name: str_numService_1.default.stringToNumber(kycDetails.name), // Convert name to BigInt
+                idNumber: str_numService_1.default.stringToNumber(kycDetails.idNumber), // Convert ID number to BigInt
+                nationality: str_numService_1.default.stringToNumber(kycDetails.nationality), // Convert nationality to BigInt
+                expectedName: str_numService_1.default.stringToNumber(kycDetails.name), // Convert expected name to BigInt
+                expectedIDNumber: str_numService_1.default.stringToNumber(kycDetails.idNumber), // Convert expected ID number to BigInt
+                expectedNationality: str_numService_1.default.stringToNumber(kycDetails.nationality), // Convert expected nationality to BigInt
+                kycVerified: kycDetails.kycVerified,
+                // Additional parameters can be added here if needed
+            };
+            console.log("Updated request body with input data:", req.body);
+            // Call the method to generate proof with the updated request body
+            await dataController_1.DataController.generateUserProof(req, res);
         }
         catch (error) {
             const errorMessage = error instanceof Error ? error.message : "Error in /generate-proof:";
             console.error("Error occurred:", errorMessage); // Log the error message
-            // console.error("Stack Trace:", error.stack); // Log the stack trace for more context
             res.status(500).json({ error: "Internal server error" });
         }
     });
@@ -243,45 +249,210 @@ AppDataSource.initialize()
      *           schema:
      *             type: object
      *             required:
-     *               - proof
-     *               - publicSignals
-     *               - verifierAddress
+     *               - username
+     *               - proofId
      *               - verificationKeyPath
+     *               - verifierAddress
      *             properties:
-     *               proof:
-     *                 type: object
-     *                 description: The cryptographic proof to verify
-     *               publicSignals:
-     *                 type: array
-     *                 items:
-     *                   type: string
-     *                 description: The public signals generated with the proof
-     *               verifierAddress:
+     *               username:
      *                 type: string
-     *                 description: The Ethereum address of the verifier contract
+     *                 description: The username of the user whose proof is being verified
+     *               proofId:
+     *                 type: string
+     *                 description: The ID of the proof to verify
      *               verificationKeyPath:
      *                 type: string
      *                 description: Path to the verification key file
+     *               verifierAddress:
+     *                  type: string
+     *                  description: address of the verifier contract
      *     responses:
      *       200:
      *         description: Proof verification result
+     *         content:
+     *           application/json:
+     *             schema:
+     *               type: object
+     *               properties:
+     *                 validOffChain:
+     *                   type: boolean
+     *                   description: Indicates whether the proof is valid off-chain
+     *                 validOnChain:
+     *                   type: string
+     *                   description: Indicates whether the proof is valid on-chain (if applicable)
+     *       400:
+     *         description: Bad request - Missing required fields
+     *         content:
+     *           application/json:
+     *             schema:
+     *               type: object
+     *               properties:
+     *                 error:
+     *                   type: string
+     *                   description: Error message detailing what went wrong
+     *       404:
+     *         description: Proof or user not found
+     *         content:
+     *           application/json:
+     *             schema:
+     *               type: object
+     *               properties:
+     *                 error:
+     *                   type: string
+     *                   description: Error message when proof or user is not found
      *       500:
      *         description: Server error
+     *         content:
+     *           application/json:
+     *             schema:
+     *               type: object
+     *               properties:
+     *                 error:
+     *                   type: string
+     *                   description: Error message for server-side issues
      */
-    app.post('/verify-proof', async (req, res) => {
+    app.post('/verify-proof', authMiddleware_1.authenticate, async (req, res) => {
         try {
-            const { proof, publicSignals, verifierAddress, verificationKeyPath } = req.body;
+            const { username, proofId, verificationKeyPath, verifierAddress } = req.body;
+            const userId = req.user; // Assuming the userId is available from authentication middleware
+            console.log('Proof ID:', proofId);
+            // Validate required fields
+            if (!username || !proofId || !verificationKeyPath || !verifierAddress) {
+                return res.status(400).json({ error: 'Missing required fields' });
+            }
+            const proof_id = new mongoose_1.default.Types.ObjectId(`${proofId}`);
+            const formattedProofId = `ObjectId('${proof_id.toHexString()}')`;
+            console.log("proof is", proof_id, formattedProofId);
+            // Fetch the proof associated with the specific user and proofId
+            const proofRecord = await proof_1.default.findOne({ _id: proof_id });
+            if (!proofRecord) {
+                return res.status(404).json({ error: 'Proof not found for the specified user' });
+            }
+            const { proofData, publicSignals } = proofRecord;
             // Off-chain verification
-            const isValidOffChain = await (0, verifyProofService_1.verifyProofOffChain)(proof, publicSignals, verificationKeyPath);
+            const isValidOffChain = await (0, verifyProofService_1.verifyProofOffChain)(proofData, publicSignals, verificationKeyPath);
             // On-chain verification
-            const isValidOnChain = await (0, verifyProofService_1.verifyProofOnChain)(proof, publicSignals, verifierAddress);
+            let isValidOnChain = false;
+            try {
+                isValidOnChain = await (0, verifyProofService_1.verifyProofOnChain)(proofData, publicSignals, verifierAddress);
+            }
+            catch (err) {
+                console.error('On-chain verification failed:', err);
+            }
             res.json({ validOffChain: isValidOffChain, validOnChain: isValidOnChain });
         }
         catch (err) {
             const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred';
+            console.error('Error in /verify-proof:', errorMessage);
             res.status(500).json({ error: errorMessage });
         }
     });
+    /**
+     * @swagger
+     * /api/proofs:
+     *   get:
+     *     summary: Get all proofs for the user
+     *     description: Retrieves all proofs associated with the authenticated user.
+     *     tags: [Proofs]
+     *     responses:
+     *       200:
+     *         description: List of proofs retrieved successfully.
+     *         content:
+     *           application/json:
+     *             schema:
+     *               type: array
+     *               items:
+     *                 type: object
+     *       404:
+     *         description: No proofs found for the user.
+     *       500:
+     *         description: Internal server error.
+     */
+    app.get('/api/proofs', authMiddleware_1.authenticate, proofController_1.default.getAll);
+    /**
+     * @swagger
+     * /api/proofs/{proofId}:
+     *   get:
+     *     summary: Get proof by ID
+     *     description: Retrieves a proof by its ID.
+     *     tags: [Proofs]
+     *     parameters:
+     *       - in: path
+     *         name: proofId
+     *         required: true
+     *         description: The ID of the proof to retrieve.
+     *         schema:
+     *           type: string
+     *     responses:
+     *       200:
+     *         description: Proof retrieved successfully.
+     *         content:
+     *           application/json:
+     *             schema:
+     *               type: object
+     *       404:
+     *         description: Proof not found.
+     *       500:
+     *         description: Internal server error.
+     */
+    app.get('/api/proofs/:proofId', authMiddleware_1.authenticate, proofController_1.default.getById);
+    /**
+     * @swagger
+     * /api/proofs/{proofId}:
+     *   put:
+     *     summary: Update proof by ID
+     *     description: Updates a proof with the specified ID.
+     *     tags: [Proofs]
+     *     parameters:
+     *       - in: path
+     *         name: proofId
+     *         required: true
+     *         description: The ID of the proof to update.
+     *         schema:
+     *           type: string
+     *     requestBody:
+     *       required: true
+     *       content:
+     *         application/json:
+     *           schema:
+     *             type: object
+     *             additionalProperties: true
+     *     responses:
+     *       200:
+     *         description: Proof updated successfully.
+     *         content:
+     *           application/json:
+     *             schema:
+     *               type: object
+     *       404:
+     *         description: Proof not found.
+     *       500:
+     *         description: Internal server error.
+     */
+    app.put('/api/proofs/:proofId', authMiddleware_1.authenticate, proofController_1.default.update);
+    /**
+     * @swagger
+     * /api/proofs/{proofId}:
+     *   delete:
+     *     summary: Delete proof by ID
+     *     description: Deletes a proof with the specified ID.
+     *     tags: [Proofs]
+     *     parameters:
+     *       - in: path
+     *         name: proofId
+     *         required: true
+     *         description: The ID of the proof to delete.
+     *         schema:
+     *           type: string
+     *     responses:
+     *       204:
+     *         description: Proof deleted successfully.
+     *       404:
+     *         description: Proof not found.
+     *       500:
+     *         description: Internal server error.
+     */
+    app.delete('/api/proofs/:proofId', authMiddleware_1.authenticate, proofController_1.default.delete);
     // Store Data API with File Upload and Secret Key
     /**
      * @swagger
@@ -460,7 +631,7 @@ AppDataSource.initialize()
         try {
             //console.log(req)
             const { userId } = req.body;
-            const user = await User_1.User.findOne({ where: { id: userId } });
+            const user = await User_1.default.findOne({ where: { id: userId } });
             if (!user) {
                 return res.status(404).json({ error: 'User not found' });
             }
@@ -532,8 +703,8 @@ AppDataSource.initialize()
     app.get('/user-data-hashes', authMiddleware_1.authenticate, async (req, res) => {
         try {
             //console.log(req)
-            const { userId } = req.body;
-            const userDataHashes = await UserDataHash_1.UserDataHash.find({ where: { user: { id: userId } } });
+            const userId = req.user;
+            const userDataHashes = await UserDataHash_1.default.find({ user: userId });
             res.json(userDataHashes.map(data => ({
                 dataHash: data.dataHash,
                 filename: data.filename,
@@ -700,6 +871,191 @@ AppDataSource.initialize()
             res.status(500).json({ error: errorMessage });
         }
     });
+    // KYC Creation API
+    /**
+     * @swagger
+     * /kyc:
+     *   post:
+     *     summary: Create a new KYC record
+     *     tags: [KYC]
+     *     requestBody:
+     *       required: true
+     *       content:
+     *         application/json:
+     *           schema:
+     *             type: object
+     *             required:
+     *               - name
+     *               - dateOfBirth
+     *               - idNumber
+     *               - nationality
+     *             properties:
+     *               name:
+     *                 type: string
+     *                 example: "John Doe"
+     *               dateOfBirth:
+     *                 type: string
+     *                 format: date
+     *                 example: "1990-01-01"
+     *               idNumber:
+     *                 type: string
+     *                 example: "A12345678"
+     *               nationality:
+     *                 type: string
+     *                 example: "USA"
+     *     responses:
+     *       201:
+     *         description: KYC record created successfully
+     *       400:
+     *         description: Bad request
+     *       500:
+     *         description: Server error
+     */
+    app.post('/kyc', authMiddleware_1.authenticate, kycController_1.KYCController.createKYC); // Use the KYC controller to handle the request
+    /**
+     * @swagger
+     * /kyc/user:
+     *   get:
+     *     summary: Get all KYC records for the logged-in user
+     *     tags: [KYC]
+     *     responses:
+     *       200:
+     *         description: List of KYC records for the user
+     *         content:
+     *           application/json:
+     *             schema:
+     *               type: array
+     *               items:
+     *                 type: object
+     *                 properties:
+     *                   _id:
+     *                     type: string
+     *                   name:
+     *                     type: string
+     *                   dateOfBirth:
+     *                     type: string
+     *                     format: date
+     *                   idNumber:
+     *                     type: string
+     *                   nationality:
+     *                     type: string
+     *               example:
+     *                 - _id: "616d5d4edb2c5b0015e9f4b6"
+     *                   name: "John Doe"
+     *                   dateOfBirth: "1990-01-01"
+     *                   idNumber: "A12345678"
+     *                   nationality: "USA"
+     *       400:
+     *         description: User ID is required
+     *       500:
+     *         description: Error retrieving KYC records
+     */
+    app.get('/kyc/user', authMiddleware_1.authenticate, kycController_1.KYCController.getAllKYCForUser);
+    /**
+     * @swagger
+     * /kyc/{id}:
+     *   get:
+     *     summary: Get KYC record by ID
+     *     tags: [KYC]
+     *     parameters:
+     *       - in: path
+     *         name: id
+     *         schema:
+     *           type: string
+     *         required: true
+     *         description: The KYC record ID
+     *     responses:
+     *       200:
+     *         description: KYC record retrieved successfully
+     *         content:
+     *           application/json:
+     *             schema:
+     *               type: object
+     *               properties:
+     *                 _id:
+     *                   type: string
+     *                 name:
+     *                   type: string
+     *                 dateOfBirth:
+     *                   type: string
+     *                 idNumber:
+     *                   type: string
+     *                 nationality:
+     *                   type: string
+     *               example:
+     *                 _id: "616d5d4edb2c5b0015e9f4b6"
+     *                 name: "John Doe"
+     *                 dateOfBirth: "1990-01-01"
+     *                 idNumber: "A12345678"
+     *                 nationality: "USA"
+     *       404:
+     *         description: KYC record not found
+     *       500:
+     *         description: Server error
+     */
+    app.get('/kyc/:id', authMiddleware_1.authenticate, kycController_1.KYCController.getKYCById);
+    // Update KYC API
+    /**
+     * @swagger
+     * /kyc/{id}:
+     *   patch:
+     *     summary: Update KYC record
+     *     tags: [KYC]
+     *     parameters:
+     *       - in: path
+     *         name: id
+     *         schema:
+     *           type: string
+     *         required: true
+     *         description: The KYC record ID
+     *     requestBody:
+     *       required: true
+     *       content:
+     *         application/json:
+     *           schema:
+     *             type: object
+     *             properties:
+     *               name:
+     *                 type: string
+     *               dateOfBirth:
+     *                 type: string
+     *                 format: date
+     *               idNumber:
+     *                 type: string
+     *               nationality:
+     *                 type: string
+     *     responses:
+     *       200:
+     *         description: KYC record updated successfully
+     *       404:
+     *         description: KYC record not found
+     *       500:
+     *         description: Server error
+     */
+    app.patch('/kyc/:id', authMiddleware_1.authenticate, kycController_1.KYCController.updateKYC);
+    // Delete KYC API
+    /**
+     * @swagger
+     * /kyc/{id}:
+     *   delete:
+     *     summary: Delete KYC record
+     *     tags: [KYC]
+     *     parameters:
+     *       - in: path
+     *         name: id
+     *         schema:
+     *           type: string
+     *         required: true
+     *         description: The KYC record ID
+     *     responses:
+     *       200:
+     *         description: KYC record deleted successfully
+     *       404:
+     *         description: KYC record not found
+     *       500:
+     *         description: Server error
+     */
+    app.delete('/kyc/:id', authMiddleware_1.authenticate, kycController_1.KYCController.deleteKYC);
     //         // Dummy Data Endpoint for Verification
     //         /**
     //          * @swagger

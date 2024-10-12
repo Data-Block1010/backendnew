@@ -2,6 +2,7 @@
 import mongoose, { Document, Schema } from 'mongoose';
 
 export interface IUser extends Document {
+    _id: string;
     username: string;
     passwordHash: string;
     isActive: boolean;

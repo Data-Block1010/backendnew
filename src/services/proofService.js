@@ -26,11 +26,13 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.ProofService = void 0;
 exports.generateProof = generateProof;
 const child_process_1 = require("child_process");
 const fs = __importStar(require("fs"));
 const path_1 = __importDefault(require("path"));
 const util_1 = require("util");
+const proof_1 = __importDefault(require("../models/proof"));
 // Use `exec` in async mode
 const execAsync = (0, util_1.promisify)(child_process_1.exec);
 // Function to create unique temp directory for each user session
@@ -67,3 +69,23 @@ async function generateProof(inputData, circuitWasmPath, zkeyPath, userId // Add
         throw new Error("Proof generation failed");
     }
 }
+// Proof Management Functions
+class ProofService {
+    // Get all proofs for a user
+    static async getAllProofsForUser(userId) {
+        return proof_1.default.find({ userId });
+    }
+    // Get proof by ID
+    static async getProofById(proofId) {
+        return proof_1.default.findById(proofId);
+    }
+    // Update proof by ID
+    static async updateProof(proofId, updateData) {
+        return proof_1.default.findByIdAndUpdate(proofId, updateData, { new: true });
+    }
+    // Delete proof by ID
+    static async deleteProof(proofId) {
+        return proof_1.default.findByIdAndDelete(proofId);
+    }
+}
+exports.ProofService = ProofService;

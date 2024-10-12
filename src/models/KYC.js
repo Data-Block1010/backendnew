@@ -23,7 +23,7 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-// models/KYC.ts
+// src/models/KYC.ts
 const mongoose_1 = __importStar(require("mongoose"));
 // Define the KYC schema
 const KYCSchema = new mongoose_1.Schema({
@@ -51,6 +51,11 @@ const KYCSchema = new mongoose_1.Schema({
     createdAt: {
         type: Date,
         default: Date.now, // Automatically set the creation date
+    },
+    user: {
+        type: mongoose_1.default.Schema.Types.ObjectId,
+        ref: 'User', // Reference to User model
+        required: true, // Ensure that a user is associated with the KYC record
     },
 }, { timestamps: true });
 // Method to calculate age

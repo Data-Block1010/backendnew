@@ -14,6 +14,7 @@
     "lib": ["es2017", "dom"],
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
+    
                            // Specify module code generation
     //"outDir": "./dist",                      // Redirect output structure to the dist directory
     //"rootDir": "./src",  

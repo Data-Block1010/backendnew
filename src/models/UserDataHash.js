@@ -23,7 +23,7 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-// models/UserDataHash.ts
+// src/models/UserDataHash.ts
 const mongoose_1 = __importStar(require("mongoose"));
 const UserDataHashSchema = new mongoose_1.Schema({
     dataHash: {
@@ -43,10 +43,10 @@ const UserDataHashSchema = new mongoose_1.Schema({
         required: true,
     },
     user: {
-        type: mongoose_1.default.Schema.Types.ObjectId,
+        type: String,
         ref: 'User', // Reference to User model
         required: true,
     },
-}, { timestamps: true });
+}, { timestamps: true }); // This will automatically add createdAt and updatedAt fields
 const UserDataHash = mongoose_1.default.model('UserDataHash', UserDataHashSchema);
 exports.default = UserDataHash;

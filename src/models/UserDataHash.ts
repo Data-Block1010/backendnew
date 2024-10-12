@@ -1,4 +1,4 @@
-// models/UserDataHash.ts
+// src/models/UserDataHash.ts
 import mongoose, { Document, Schema } from 'mongoose';
 
 export interface IUserDataHash extends Document {
@@ -6,7 +6,9 @@ export interface IUserDataHash extends Document {
     filename: string;
     cid: string; // Store the CID
     encryptedSecret: string;
-    user: mongoose.Types.ObjectId; // Reference to User
+    user: string; // Reference to User
+    createdAt: Date; // Add createdAt to the interface
+    updatedAt: Date; // Optionally add updatedAt if you want to use it
 }
 
 const UserDataHashSchema: Schema = new Schema({
@@ -27,11 +29,11 @@ const UserDataHashSchema: Schema = new Schema({
         required: true,
     },
     user: {
-        type: mongoose.Schema.Types.ObjectId,
+        type: String,
         ref: 'User', // Reference to User model
         required: true,
     },
-}, { timestamps: true });
+}, { timestamps: true }); // This will automatically add createdAt and updatedAt fields
 
 const UserDataHash = mongoose.model<IUserDataHash>('UserDataHash', UserDataHashSchema);
 export default UserDataHash;
