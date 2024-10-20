@@ -209,9 +209,10 @@ class DataController {
     }
     static async deleteData(req, res) {
         try {
-            const { cid, username } = req.body;
+            const { cid } = req.body;
+            const userId = req.user;
             // Find the user by username
-            const user = await User_1.default.findOne({ username }); // Mongoose query
+            const user = await User_1.default.findOne({ _id: userId }); // Mongoose query
             if (!user) {
                 return res.status(404).json({ error: "User not found" });
             }
