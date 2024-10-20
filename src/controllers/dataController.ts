@@ -155,7 +155,7 @@ export class DataController {
             userDataHash.user = user._id; // Store the user's ID
             await userDataHash.save(); // Save the entry in the database
 
-            res.json({ txHash, cid, message: "Data stored successfully" });
+            res.json({ txHash, cid, dataHash, message: "Data stored successfully" });
         } catch (error: any) {
             console.error("Error in storeData:", error.message);
             res.status(500).json({ error: error.message });
