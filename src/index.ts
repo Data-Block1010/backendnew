@@ -54,7 +54,8 @@ AppDataSource.initialize()
                 'https://backendnew-4hei.onrender.com/', 
                 'https://secure-data.on-fleek.app', 
                 'https://securedata.on-fleek.app',
-                'https://sd-svc.onrender.com'
+                'https://sd-svc.onrender.com',
+                'https://sd-svc.vercel.app'
             ],
             methods: ['GET', 'POST', 'PUT', 'DELETE'],
             allowedHeaders: ['Content-Type', 'Authorization'],
