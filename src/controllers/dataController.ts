@@ -242,14 +242,14 @@ export class DataController {
                 return res.status(404).json({ error: "Data hash not found for the user" });
             }
 
-            // Remove the reference to the CID
-            const nullHash = IpfsService.hashData("");
-            const txHash = await zkSyncService.deleteData(nullHash);
+            // // Remove the reference to the CID
+            // const nullHash = IpfsService.hashData("");
+            // const txHash = await zkSyncService.deleteData(nullHash);
 
             // Remove the data from the database
             await UserDataHash.deleteOne({ _id: userDataHash._id });
 
-            res.json({ txHash });
+            res.json({ "message": "deleted successfully" });
         } catch (error: any) {
             console.error("Error in deleteData:", error.message);
             res.status(500).json({ error: error.message });
