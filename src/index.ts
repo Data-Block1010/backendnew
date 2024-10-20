@@ -164,32 +164,7 @@ AppDataSource.initialize()
  *           schema:
  *             type: object
  *             required:
- *               - username
- *               - secretKey
- *               - circuitWasmPath
- *               - zkeyPath
- *               - filename  
  *             properties:
- *               username:
- *                 type: string
- *                 description: The username of the user requesting the proof
- *                 example: "user123"
- *               secretKey:
- *                 type: string
- *                 description: The secret key for encryption
- *                 example: "your_secret_key"
- *               circuitWasmPath:
- *                 type: string
- *                 description: The path to the circuit WASM file
- *                 example: "path/to/circuit.wasm"
- *               zkeyPath:
- *                 type: string
- *                 description: The path to the Zkey file
- *                 example: "path/to/verification.zkey"
- *               filename:  
- *                 type: string
- *                 description: The name of the file to find the corresponding data hash
- *                 example: "example_file.txt"
  *     responses:
  *       200:
  *         description: Proof generated successfully

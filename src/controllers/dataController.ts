@@ -51,37 +51,40 @@ export class DataController {
 
     static async generateUserProof(req: Request, res: Response) {
         try {
-            const { username, secretKey, filename, circuitWasmPath, zkeyPath, inputData } = req.body;
-            if (!username || !secretKey || !filename || !circuitWasmPath || !zkeyPath || !inputData) {
+            const {inputData } = req.body;
+            if (inputData) {
                 return res.status(400).json({ error: "Missing required fields" });
             }
+            const circuitWasmPath = "kycVerification_js/kycVerification.wasm";
+            const zkeyPath = "kycVerification_0001.zkey"
             console.log("Request Body:", req.body);
+            const userId = req.user; 
 
-            const user = await User.findOne({ username }); // Mongoose query to find the user
+            const user = await User.findOne({ _id: userId }); // Mongoose query to find the user
             if (!user) {
-                console.error("User not found for username:", username);
+                console.error("User not found for username:", userId);
                 return res.status(404).json({ error: "User not found" });
             }
 
-            const userDataHash = await UserDataHash.findOne({ user: user._id, filename }); // Find the hash in the database
-            if (!userDataHash) {
-                console.error("User data hash not found for filename:", filename);
-                return res.status(404).json({ error: "User data hash not found" });
-            }
+            // const userDataHash = await UserDataHash.findOne({ user: user._id, filename }); // Find the hash in the database
+            // if (!userDataHash) {
+            //     console.error("User data hash not found for filename:", filename);
+            //     return res.status(404).json({ error: "User data hash not found" });
+            // }
 
-            const cid = userDataHash.cid; // Fetch the CID
-            if (!cid) {
-                console.error("CID not found for filename:", filename);
-                return res.status(404).json({ error: "CID not found" });
-            }
+            // const cid = userDataHash.cid; // Fetch the CID
+            // if (!cid) {
+            //     console.error("CID not found for filename:", filename);
+            //     return res.status(404).json({ error: "CID not found" });
+            // }
 
             // Fetch the encrypted data from IPFS
-            const fileUrl = `https://gateway.pinata.cloud/ipfs/${cid}`;
-            const response = await axios.get(fileUrl);
-            const encryptedData = response.data;
+            // const fileUrl = `https://gateway.pinata.cloud/ipfs/${cid}`;
+            // const response = await axios.get(fileUrl);
+            // const encryptedData = response.data;
 
-            // Decrypt the data using the secret key
-            const decryptedData = IpfsService.decryptData(encryptedData, secretKey);
+            // // Decrypt the data using the secret key
+            // const decryptedData = IpfsService.decryptData(encryptedData, secretKey);
 
             // Generate a cryptographic proof using the decrypted data
             const { proof, publicSignals } = await generateProof(
