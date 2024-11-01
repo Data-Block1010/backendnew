@@ -25,6 +25,7 @@ import User from './models/User';
 import Proof from './models/proof'; // Import the User model
 import UserDataHash from './models/UserDataHash'; // Import the UserDataHash model
 import { KYCController } from './controllers/kycController'; // Import the KYC controller
+import { WaitlistController } from './controllers/waitListController'
 const web3 = new Web3(process.env.SEPOLIA_RPC_URL || "https://rpc.sepolia-api.lisk.com");
 
 
@@ -39,6 +40,8 @@ const AppDataSource = new DataSource({
     synchronize: true,
     logging: false,
 });
+
+const Waitlist = new WaitlistController()
 
 // Initialize the connection
 AppDataSource.initialize()
@@ -1071,6 +1074,195 @@ app.patch('/kyc/:id', authenticate, KYCController.updateKYC);
  */
 app.delete('/kyc/:id', authenticate, KYCController.deleteKYC);
       
+
+/**
+ * @swagger
+ * components:
+ *   schemas:
+ *     WaitlistEntry:
+ *       type: object
+ *       properties:
+ *         email:
+ *           type: string
+ *           format: email
+ *         name:
+ *           type: string
+ *         position:
+ *           type: number
+ *         status:
+ *           type: string
+ *           enum: ['waiting', 'invited', 'joined']
+ *         joinedAt:
+ *           type: string
+ *           format: date-time
+ * 
+ * /api/waitlist/join:
+ *   post:
+ *     summary: Join the waitlist
+ *     description: Add a new entry to the waitlist
+ *     tags: [Waitlist]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 format: email
+ *               name:
+ *                 type: string
+ *     responses:
+ *       201:
+ *         description: Successfully added to waitlist
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                 position:
+ *                   type: number
+ *       400:
+ *         description: Invalid input or email already exists
+ *       500:
+ *         description: Internal server error
+ */
+app.post('/join', Waitlist.join);
+
+/**
+ * @swagger
+ * /api/waitlist/position/{email}:
+ *   get:
+ *     summary: Get waitlist position
+ *     description: Retrieve the current position of an email in the waitlist
+ *     tags: [Waitlist]
+ *     parameters:
+ *       - in: path
+ *         name: email
+ *         required: true
+ *         description: Email to check waitlist position
+ *         schema:
+ *           type: string
+ *           format: email
+ *     responses:
+ *       200:
+ *         description: Waitlist position retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 position:
+ *                   type: number
+ *       404:
+ *         description: Email not found in waitlist
+ *       500:
+ *         description: Internal server error
+ */
+app.get('/position/:email', Waitlist.getPosition);
+
+/**
+ * @swagger
+ * /api/waitlist:
+ *   get:
+ *     summary: Get all waitlist entries
+ *     description: Retrieve all entries in the waitlist (admin only)
+ *     tags: [Waitlist]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Successfully retrieved waitlist entries
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/WaitlistEntry'
+ *       401:
+ *         description: Unauthorized access
+ *       500:
+ *         description: Internal server error
+ */
+app.get('/', authenticate, Waitlist.getAll);
+
+/**
+ * @swagger
+ * /api/waitlist/invite:
+ *   post:
+ *     summary: Invite users from waitlist
+ *     description: Invite a batch of users from the waitlist (admin only)
+ *     tags: [Waitlist]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               count:
+ *                 type: number
+ *                 default: 10
+ *                 description: Number of users to invite
+ *     responses:
+ *       200:
+ *         description: Successfully invited users
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                 invitedCount:
+ *                   type: number
+ *       401:
+ *         description: Unauthorized access
+ *       500:
+ *         description: Internal server error
+ */
+app.post('/invite', authenticate, Waitlist.inviteUsers);
+
+/**
+ * @swagger
+ * /api/waitlist/{email}:
+ *   delete:
+ *     summary: Remove email from waitlist
+ *     description: Remove a specific email from the waitlist (admin only)
+ *     tags: [Waitlist]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: email
+ *         required: true
+ *         description: Email to remove from waitlist
+ *         schema:
+ *           type: string
+ *           format: email
+ *     responses:
+ *       200:
+ *         description: Successfully removed from waitlist
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *       404:
+ *         description: Email not found in waitlist
+ *       401:
+ *         description: Unauthorized access
+ *       500:
+ *         description: Internal server error
+ */
+app.delete('/:email', authenticate, Waitlist.remove);
+
 //         // Dummy Data Endpoint for Verification
 //         /**
 //          * @swagger
