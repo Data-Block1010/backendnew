@@ -19,7 +19,7 @@ import StringNumberService from '../src/services/str_numService';
 // import { User } from './entitiy/User';
 // import { UserDataHash } from './entitiy/UserDataHash';
 import ProofController from './controllers/proofController'; 
-import { ZkSyncService } from "./services/zkSyncService";
+//import { ZkSyncService } from "./services/zkSyncService";
 import KYC from './models/KYC'; // Import the KYC model
 import User from './models/User';
 import Proof from './models/proof'; // Import the User model
@@ -41,7 +41,7 @@ const AppDataSource = new DataSource({
     logging: false,
 });
 
-const Waitlist = new WaitlistController()
+//const Waitlist = new WaitlistController()
 
 // Initialize the connection
 AppDataSource.initialize()
@@ -1130,7 +1130,7 @@ app.delete('/kyc/:id', authenticate, KYCController.deleteKYC);
  *       500:
  *         description: Internal server error
  */
-app.post('/join', Waitlist.join);
+app.post('/api/waitlist/join', WaitlistController.join);
 
 /**
  * @swagger
@@ -1162,7 +1162,7 @@ app.post('/join', Waitlist.join);
  *       500:
  *         description: Internal server error
  */
-app.get('/position/:email', Waitlist.getPosition);
+app.get('/position/:email', WaitlistController.getPosition);
 
 /**
  * @swagger
@@ -1187,7 +1187,7 @@ app.get('/position/:email', Waitlist.getPosition);
  *       500:
  *         description: Internal server error
  */
-app.get('/', authenticate, Waitlist.getAll);
+app.get('/', authenticate, WaitlistController.getAll);
 
 /**
  * @swagger
@@ -1225,7 +1225,7 @@ app.get('/', authenticate, Waitlist.getAll);
  *       500:
  *         description: Internal server error
  */
-app.post('/invite', authenticate, Waitlist.inviteUsers);
+app.post('/invite', authenticate, WaitlistController.inviteUsers);
 
 /**
  * @swagger
@@ -1261,7 +1261,7 @@ app.post('/invite', authenticate, Waitlist.inviteUsers);
  *       500:
  *         description: Internal server error
  */
-app.delete('/:email', authenticate, Waitlist.remove);
+app.delete('/:email', authenticate, WaitlistController.remove);
 
 //         // Dummy Data Endpoint for Verification
 //         /**

@@ -23,6 +23,7 @@ const str_numService_1 = __importDefault(require("../src/services/str_numService
 // import { User } from './entitiy/User';
 // import { UserDataHash } from './entitiy/UserDataHash';
 const proofController_1 = __importDefault(require("./controllers/proofController"));
+//import { ZkSyncService } from "./services/zkSyncService";
 const KYC_1 = __importDefault(require("./models/KYC")); // Import the KYC model
 const User_1 = __importDefault(require("./models/User"));
 const proof_1 = __importDefault(require("./models/proof")); // Import the User model
@@ -41,7 +42,7 @@ const AppDataSource = new typeorm_1.DataSource({
     synchronize: true,
     logging: false,
 });
-const Waitlist = new waitListController_1.WaitlistController();
+//const Waitlist = new WaitlistController()
 // Initialize the connection
 AppDataSource.initialize()
     .then(async () => {
@@ -1089,7 +1090,7 @@ AppDataSource.initialize()
      *       500:
      *         description: Internal server error
      */
-    app.post('/join', Waitlist.join);
+    app.post('/api/waitlist/join', waitListController_1.WaitlistController.join);
     /**
      * @swagger
      * /api/waitlist/position/{email}:
@@ -1120,7 +1121,7 @@ AppDataSource.initialize()
      *       500:
      *         description: Internal server error
      */
-    app.get('/position/:email', Waitlist.getPosition);
+    app.get('/position/:email', waitListController_1.WaitlistController.getPosition);
     /**
      * @swagger
      * /api/waitlist:
@@ -1144,7 +1145,7 @@ AppDataSource.initialize()
      *       500:
      *         description: Internal server error
      */
-    app.get('/', authMiddleware_1.authenticate, Waitlist.getAll);
+    app.get('/', authMiddleware_1.authenticate, waitListController_1.WaitlistController.getAll);
     /**
      * @swagger
      * /api/waitlist/invite:
@@ -1181,7 +1182,7 @@ AppDataSource.initialize()
      *       500:
      *         description: Internal server error
      */
-    app.post('/invite', authMiddleware_1.authenticate, Waitlist.inviteUsers);
+    app.post('/invite', authMiddleware_1.authenticate, waitListController_1.WaitlistController.inviteUsers);
     /**
      * @swagger
      * /api/waitlist/{email}:
@@ -1216,7 +1217,7 @@ AppDataSource.initialize()
      *       500:
      *         description: Internal server error
      */
-    app.delete('/:email', authMiddleware_1.authenticate, Waitlist.remove);
+    app.delete('/:email', authMiddleware_1.authenticate, waitListController_1.WaitlistController.remove);
     //         // Dummy Data Endpoint for Verification
     //         /**
     //          * @swagger

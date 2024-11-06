@@ -5,10 +5,7 @@ const waitListEntry_1 = require("../models/waitListEntry");
 const validators_1 = require("../utils/validators");
 const emailService_1 = require("../services/emailService");
 class WaitlistController {
-    constructor() {
-        this.emailService = new emailService_1.EmailService();
-    }
-    async join(req, res) {
+    static async join(req, res) {
         try {
             const { email, name } = req.body;
             // Validate input
@@ -37,7 +34,8 @@ class WaitlistController {
             });
             await waitlistEntry.save();
             // Send confirmation email
-            await this.emailService.sendWaitlistConfirmation(waitlistEntry.email, waitlistEntry.name, waitlistEntry.position);
+            const emailService = new emailService_1.EmailService();
+            await emailService.sendWaitlistConfirmation(waitlistEntry.email, waitlistEntry.name, waitlistEntry.position);
             res.status(201).json({
                 message: 'Added to waitlist successfully',
                 position,
@@ -48,7 +46,7 @@ class WaitlistController {
             res.status(500).json({ error: 'Internal server error' });
         }
     }
-    async getPosition(req, res) {
+    static async getPosition(req, res) {
         try {
             const { email } = req.params;
             const entry = await waitListEntry_1.WaitlistEntry.findOne({ email });
@@ -62,7 +60,7 @@ class WaitlistController {
             res.status(500).json({ error: 'Internal server error' });
         }
     }
-    async getAll(req, res) {
+    static async getAll(req, res) {
         try {
             const entries = await waitListEntry_1.WaitlistEntry.find()
                 .sort({ position: 1 })
@@ -73,7 +71,7 @@ class WaitlistController {
             res.status(500).json({ error: 'Internal server error' });
         }
     }
-    async inviteUsers(req, res) {
+    static async inviteUsers(req, res) {
         try {
             const { count = 10 } = req.body;
             const result = await waitListEntry_1.WaitlistEntry.updateMany({ status: 'waiting' }, { status: 'invited' }, { limit: count });
@@ -86,7 +84,7 @@ class WaitlistController {
             res.status(500).json({ error: 'Internal server error' });
         }
     }
-    async remove(req, res) {
+    static async remove(req, res) {
         try {
             const { email } = req.params;
             const entry = await waitListEntry_1.WaitlistEntry.findOneAndDelete({ email });
