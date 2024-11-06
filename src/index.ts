@@ -1162,7 +1162,7 @@ app.post('/api/waitlist/join', WaitlistController.join);
  *       500:
  *         description: Internal server error
  */
-app.get('/position/:email', WaitlistController.getPosition);
+app.get('/api/waitlist/position/:email', WaitlistController.getPosition);
 
 /**
  * @swagger
@@ -1187,7 +1187,7 @@ app.get('/position/:email', WaitlistController.getPosition);
  *       500:
  *         description: Internal server error
  */
-app.get('/', authenticate, WaitlistController.getAll);
+app.get('/api/waitlist', authenticate, WaitlistController.getAll);
 
 /**
  * @swagger
@@ -1225,7 +1225,7 @@ app.get('/', authenticate, WaitlistController.getAll);
  *       500:
  *         description: Internal server error
  */
-app.post('/invite', authenticate, WaitlistController.inviteUsers);
+app.post('/api/waitlist/invite', authenticate, WaitlistController.inviteUsers);
 
 /**
  * @swagger
@@ -1261,7 +1261,7 @@ app.post('/invite', authenticate, WaitlistController.inviteUsers);
  *       500:
  *         description: Internal server error
  */
-app.delete('/:email', authenticate, WaitlistController.remove);
+app.delete('/api/waitlist/:email', authenticate, WaitlistController.remove);
 
 //         // Dummy Data Endpoint for Verification
 //         /**
