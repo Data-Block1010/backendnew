@@ -58,7 +58,8 @@ AppDataSource.initialize()
                 'https://secure-data.on-fleek.app', 
                 'https://securedata.on-fleek.app',
                 'https://sd-svc.onrender.com',
-                'https://sd-svc.vercel.app'
+                'https://sd-svc.vercel.app',
+                'https://www.guardzero.xyz'
             ],
             methods: ['GET', 'POST', 'PUT', 'DELETE'],
             allowedHeaders: ['Content-Type', 'Authorization'],

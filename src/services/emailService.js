@@ -4,7 +4,7 @@ exports.EmailService = void 0;
 const email_config_1 = require("../config/email.config");
 class EmailService {
     constructor() {
-        this.appName = 'ZeroGuard';
+        this.appName = 'GuardZero';
         this.primaryColor = '#4F46E5'; // Indigo color, you can adjust
         this.brandFooter = `
     <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee; text-align: center;">
