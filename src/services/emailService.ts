@@ -6,7 +6,7 @@ interface EmailError extends Error {
 }
 
 export class EmailService {
-  private readonly appName = 'ZeroGuard';
+  private readonly appName = 'GuardZero';
   private readonly primaryColor = '#4F46E5'; // Indigo color, you can adjust
   private readonly brandFooter = `
     <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee; text-align: center;">
