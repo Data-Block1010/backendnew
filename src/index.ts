@@ -26,6 +26,13 @@ import Proof from './models/proof'; // Import the User model
 import UserDataHash from './models/UserDataHash'; // Import the UserDataHash model
 import { KYCController } from './controllers/kycController'; // Import the KYC controller
 import { WaitlistController } from './controllers/waitListController'
+import { DemoRequest } from './models/demo-request';
+import { DemoRequestService } from './services/demo-requestService';
+import { EmailService } from './services/emailService';
+
+// Add these imports after your existing imports
+const emailService = new EmailService();
+const demoRequestService = new DemoRequestService(emailService);
 const web3 = new Web3(process.env.SEPOLIA_RPC_URL || "https://rpc.sepolia-api.lisk.com");
 
 
@@ -1263,7 +1270,227 @@ app.post('/api/waitlist/invite', authenticate, WaitlistController.inviteUsers);
  *         description: Internal server error
  */
 app.delete('/api/waitlist/:email', authenticate, WaitlistController.remove);
+/**
+ * @swagger
+ * components:
+ *   schemas:
+ *     DemoRequest:
+ *       type: object
+ *       required:
+ *         - name
+ *         - email
+ *         - company
+ *       properties:
+ *         name:
+ *           type: string
+ *           description: Full name of the requester
+ *         email:
+ *           type: string
+ *           format: email
+ *           description: Email address
+ *         company:
+ *           type: string
+ *           description: Company name
+ *         position:
+ *           type: string
+ *           description: Job position
+ *         phoneNumber:
+ *           type: string
+ *           description: Contact phone number
+ *         message:
+ *           type: string
+ *           description: Additional message
+ */
 
+/**
+ * @swagger
+ * /api/demo-requests:
+ *   post:
+ *     summary: Submit a demo request
+ *     tags: [Demo]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/DemoRequest'
+ *     responses:
+ *       201:
+ *         description: Demo request created successfully
+ *       400:
+ *         description: Invalid input
+ *       500:
+ *         description: Server error
+ */
+app.post('/api/demo-requests', async (req, res) => {
+    try {
+        const demoRequest = await demoRequestService.createDemoRequest(req.body);
+        res.status(201).json(demoRequest);
+    } catch (error) {
+        if (error instanceof Error) {
+            res.status(400).json({ message: error.message });
+        } else {
+            res.status(500).json({ message: 'An unexpected error occurred' });
+        }
+    }
+});
+
+/**
+ * @swagger
+ * /api/demo-requests:
+ *   get:
+ *     summary: Get all demo requests (admin only)
+ *     tags: [Demo]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *         description: Page number
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *         description: Items per page
+ *       - in: query
+ *         name: status
+ *         schema:
+ *           type: string
+ *         description: Filter by status
+ *     responses:
+ *       200:
+ *         description: List of demo requests
+ *       401:
+ *         description: Unauthorized
+ *       500:
+ *         description: Server error
+ */
+app.get('/api/demo-requests', authenticate, async (req, res) => {
+    try {
+        const page = parseInt(req.query.page as string) || 1;
+        const limit = parseInt(req.query.limit as string) || 10;
+        
+
+        const status = req.query.status as "pending" | "contacted" | "completed" | "cancelled" | undefined; // Type assertion
+        const result = await demoRequestService.listDemoRequests({ status }, page, limit);
+        res.json(result);
+    } catch (error) {
+        res.status(500).json({ message: 'Failed to fetch demo requests' });
+    }
+});
+
+/**
+ * @swagger
+ * /api/demo-requests/stats:
+ *   get:
+ *     summary: Get demo request statistics (admin only)
+ *     tags: [Demo]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Demo request statistics
+ *       401:
+ *         description: Unauthorized
+ *       500:
+ *         description: Server error
+ */
+app.get('/api/demo-requests/stats', authenticate, async (req, res) => {
+    try {
+        const stats = await demoRequestService.getStats();
+        res.json(stats);
+    } catch (error) {
+        res.status(500).json({ message: 'Failed to fetch statistics' });
+    }
+});
+
+/**
+ * @swagger
+ * /api/demo-requests/{email}/position:
+ *   get:
+ *     summary: Get waitlist position for an email
+ *     tags: [Demo]
+ *     parameters:
+ *       - in: path
+ *         name: email
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Email address to check
+ *     responses:
+ *       200:
+ *         description: Waitlist position
+ *       404:
+ *         description: Email not found
+ *       500:
+ *         description: Server error
+ */
+app.get('/api/demo-requests/:email/position', async (req, res) => {
+    try {
+        const position = await demoRequestService.getWaitlistPosition(req.params.email);
+        if (position === null) {
+            res.status(404).json({ message: 'Email not found in waitlist' });
+        } else {
+            res.json({ position });
+        }
+    } catch (error) {
+        res.status(500).json({ message: 'Failed to fetch waitlist position' });
+    }
+});
+
+/**
+ * @swagger
+ * /api/demo-requests/{email}/status:
+ *   patch:
+ *     summary: Update demo request status (admin only)
+ *     tags: [Demo]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: email
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - status
+ *             properties:
+ *               status:
+ *                 type: string
+ *                 enum: [pending, contacted, completed, cancelled]
+ *     responses:
+ *       200:
+ *         description: Status updated successfully
+ *       401:
+ *         description: Unauthorized
+ *       404:
+ *         description: Demo request not found
+ *       500:
+ *         description: Server error
+ */
+app.patch('/api/demo-requests/:email/status', authenticate, async (req, res) => {
+    try {
+        const { email } = req.params;
+        const { status } = req.body;
+        
+        const updatedRequest = await demoRequestService.updateStatus(email, status);
+        if (!updatedRequest) {
+            return res.status(404).json({ message: 'Demo request not found' });
+        }
+        
+        res.json(updatedRequest);
+    } catch (error) {
+        res.status(500).json({ message: 'Failed to update status' });
+    }
+});
 //         // Dummy Data Endpoint for Verification
 //         /**
 //          * @swagger
