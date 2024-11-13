@@ -42,11 +42,12 @@ export class DemoRequestService {
       // Save to database
       await demoRequest.save();
 
-      // Send confirmation email
-      await this.emailService.sendWaitlistConfirmation(
+      // Send demo request confirmation email instead of waitlist confirmation
+      await this.emailService.sendDemoRequestConfirmation(
         data.email,
         data.name,
-        nextPosition
+        data.company,
+        data.message
       );
 
       return demoRequest;
