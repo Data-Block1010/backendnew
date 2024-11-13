@@ -34,8 +34,8 @@ class DemoRequestService {
             const demoRequest = new demo_request_1.DemoRequest(Object.assign(Object.assign({}, data), { waitlistPosition: nextPosition }));
             // Save to database
             await demoRequest.save();
-            // Send confirmation email
-            await this.emailService.sendWaitlistConfirmation(data.email, data.name, nextPosition);
+            // Send demo request confirmation email instead of waitlist confirmation
+            await this.emailService.sendDemoRequestConfirmation(data.email, data.name, data.company, data.message);
             return demoRequest;
         }
         catch (error) {
