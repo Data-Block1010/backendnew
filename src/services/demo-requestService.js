@@ -21,10 +21,10 @@ class DemoRequestService {
             // Validate input
             exports.DemoRequestSchema.parse(data);
             // Check if email already exists
-            const existingRequest = await demo_request_1.DemoRequest.findOne({ email: data.email });
-            if (existingRequest) {
-                throw new Error('Email already registered for demo');
-            }
+            // const existingRequest = await DemoRequest.findOne({ email: data.email });
+            // if (existingRequest) {
+            //   throw new Error('Email already registered for demo');
+            // }
             // Get next waitlist position
             const lastRequest = await demo_request_1.DemoRequest.findOne({})
                 .sort({ waitlistPosition: -1 })
