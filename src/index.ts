@@ -161,21 +161,14 @@ AppDataSource.initialize()
             }
         });
 
-
 /**
  * @swagger
  * /generate-proof:
  *   post:
  *     summary: Generate a cryptographic proof
  *     tags: [Proofs]
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *             properties:
+ *     security:
+ *       - bearerAuth: []
  *     responses:
  *       200:
  *         description: Proof generated successfully
@@ -192,6 +185,10 @@ AppDataSource.initialize()
  *                   items:
  *                     type: string
  *                   description: The public signals generated with the proof
+ *       401:
+ *         description: Unauthorized - User not authenticated
+ *       404:
+ *         description: KYC details not found for the user
  *       500:
  *         description: Server error
  */

@@ -11,7 +11,6 @@ const demoRequestSchema = new mongoose_1.Schema({
     email: {
         type: String,
         required: true,
-        unique: true,
         trim: true,
         lowercase: true,
     },
@@ -50,7 +49,7 @@ const demoRequestSchema = new mongoose_1.Schema({
     collection: 'demoRequests'
 });
 // Indexes for better query performance
-demoRequestSchema.index({ email: 1 }, { unique: true });
+demoRequestSchema.index({ email: 1 }, { unique: false });
 demoRequestSchema.index({ waitlistPosition: 1 }, { unique: true });
 demoRequestSchema.index({ status: 1 });
 demoRequestSchema.index({ createdAt: 1 });

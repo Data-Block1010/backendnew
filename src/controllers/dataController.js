@@ -68,7 +68,7 @@ class DataController {
     static async generateUserProof(req, res) {
         try {
             const { inputData } = req.body;
-            if (inputData) {
+            if (!inputData) {
                 return res.status(400).json({ error: "Missing required fields" });
             }
             const circuitWasmPath = "kycVerification_js/kycVerification.wasm";

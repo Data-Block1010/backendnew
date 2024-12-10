@@ -14,6 +14,98 @@ class EmailService {
       </p>
     </div>
   `;
+        this.adminEmail = process.env.ADMIN_EMAIL || 'samelect18@gmail.com';
+    }
+    async sendAdminNotification(name, email, position) {
+        const subject = `🔔 New Waitlist Registration: ${name}`;
+        const formattedDate = new Date().toLocaleDateString('en-US', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+        });
+        const html = `
+      <div style="font-family: 'Helvetica Neue', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #333;">
+        <!-- Header -->
+        <div style="background-color: ${this.primaryColor}; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
+          <h1 style="color: white; margin: 0; font-size: 24px;">New Waitlist Registration</h1>
+        </div>
+
+        <!-- Alert Box -->
+        <div style="background-color: #f8f9ff; border-left: 4px solid ${this.primaryColor}; padding: 15px; margin-bottom: 20px;">
+          <p style="margin: 0; font-size: 16px;">
+            A new user has joined the ${this.appName} waitlist!
+          </p>
+        </div>
+
+        <!-- User Details -->
+        <div style="background-color: white; border: 1px solid #eee; border-radius: 8px; padding: 20px; margin-bottom: 20px;">
+          <h2 style="color: #333; margin-top: 0; font-size: 18px;">User Details</h2>
+          <table style="width: 100%; border-collapse: collapse;">
+            <tr>
+              <td style="padding: 8px 0; color: #666;">Name:</td>
+              <td style="padding: 8px 0; text-align: right; font-weight: bold;">${name}</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px 0; color: #666;">Email:</td>
+              <td style="padding: 8px 0; text-align: right;">
+                <a href="mailto:${email}" style="color: ${this.primaryColor}; text-decoration: none;">
+                  ${email}
+                </a>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding: 8px 0; color: #666;">Waitlist Position:</td>
+              <td style="padding: 8px 0; text-align: right; color: ${this.primaryColor}; font-weight: bold;">
+                #${position}
+              </td>
+            </tr>
+            <tr>
+              <td style="padding: 8px 0; color: #666;">Joined:</td>
+              <td style="padding: 8px 0; text-align: right;">${formattedDate}</td>
+            </tr>
+          </table>
+        </div>
+
+        <!-- Quick Actions -->
+        <div style="text-align: center; margin-top: 30px;">
+          <a href="${process.env.ADMIN_DASHBOARD_URL}/waitlist" 
+             style="background-color: ${this.primaryColor};
+                    color: white;
+                    padding: 12px 25px;
+                    text-decoration: none;
+                    border-radius: 6px;
+                    font-weight: bold;
+                    display: inline-block;
+                    margin: 0 10px;">
+            View Waitlist
+          </a>
+          <a href="mailto:${email}" 
+             style="background-color: white;
+                    color: ${this.primaryColor};
+                    padding: 12px 25px;
+                    text-decoration: none;
+                    border-radius: 6px;
+                    font-weight: bold;
+                    display: inline-block;
+                    margin: 0 10px;
+                    border: 1px solid ${this.primaryColor};">
+            Contact User
+          </a>
+        </div>
+
+        ${this.brandFooter}
+      </div>
+    `;
+        try {
+            await this.sendEmail(this.adminEmail, subject, html);
+            console.log('Admin notification sent for new waitlist registration:', name);
+        }
+        catch (error) {
+            console.error('Failed to send admin notification:', error);
+            // Don't throw the error to prevent disrupting the user flow
+        }
     }
     async sendEmail(to, subject, html) {
         try {
@@ -230,7 +322,16 @@ class EmailService {
         ${this.brandFooter}
       </div>
     `;
-        await this.sendEmail(to, subject, html);
+        try {
+            // Send confirmation to user
+            await this.sendEmail(to, subject, html);
+            // Send notification to admin
+            await this.sendAdminNotification(name, to, position);
+        }
+        catch (error) {
+            console.error('Error in waitlist confirmation process:', error);
+            throw error; // Re-throw to handle in the calling function
+        }
     }
 }
 exports.EmailService = EmailService;
