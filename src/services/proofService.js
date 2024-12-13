@@ -28,64 +28,135 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.ProofService = void 0;
 exports.generateProof = generateProof;
+exports.storeProof = storeProof;
 const child_process_1 = require("child_process");
 const fs = __importStar(require("fs"));
 const path_1 = __importDefault(require("path"));
 const util_1 = require("util");
 const proof_1 = __importDefault(require("../models/proof"));
-// Use `exec` in async mode
+// Use exec in async mode
 const execAsync = (0, util_1.promisify)(child_process_1.exec);
-// Function to create unique temp directory for each user session
+// Create unique temp directory
 async function createTempDir(userId) {
     const tempDir = path_1.default.join(__dirname, `temp/${userId}`);
     await fs.promises.mkdir(tempDir, { recursive: true });
     return tempDir;
 }
-async function generateProof(inputData, circuitWasmPath, zkeyPath, userId // Add userId to ensure unique directories
-) {
+// Generate and format proof for contract
+async function generateProof(inputData, circuitWasmPath, zkeyPath, userId) {
     try {
-        // Create a unique directory for the user session
+        // Create temp directory
         const tempDir = await createTempDir(userId);
-        // Define paths for user-specific files
+        // Setup file paths
         const inputJsonPath = path_1.default.join(tempDir, 'input.json');
         const witnessWtnsPath = path_1.default.join(tempDir, 'witness.wtns');
         const proofJsonPath = path_1.default.join(tempDir, 'proof.json');
         const publicJsonPath = path_1.default.join(tempDir, 'public.json');
-        // Write input data to input.json
+        // Write input data
         await fs.promises.writeFile(inputJsonPath, JSON.stringify(inputData));
-        // Generate the witness (asynchronous execution)
+        // Generate witness
         await execAsync(`snarkjs wtns calculate ${circuitWasmPath} ${inputJsonPath} ${witnessWtnsPath}`);
-        // Generate the proof (asynchronous execution)
+        // Generate proof
         await execAsync(`snarkjs groth16 prove ${zkeyPath} ${witnessWtnsPath} ${proofJsonPath} ${publicJsonPath}`);
-        // Read and return the generated proof and public signals
+        // Read generated files
         const proof = JSON.parse(await fs.promises.readFile(proofJsonPath, 'utf8'));
         const publicSignals = JSON.parse(await fs.promises.readFile(publicJsonPath, 'utf8'));
-        // Optionally clean up the temporary files after generation (if needed)
+        // Clean up temp files
         await fs.promises.rm(tempDir, { recursive: true, force: true });
-        return { proof, publicSignals };
+        // Format proof for smart contract
+        const formattedProof = {
+            // First two elements of pi_a
+            a: [
+                proof.pi_a[0],
+                proof.pi_a[1]
+            ],
+            // Switch coordinates in pi_b
+            b: [
+                [
+                    proof.pi_b[0][1],
+                    proof.pi_b[0][0]
+                ],
+                [
+                    proof.pi_b[1][1],
+                    proof.pi_b[1][0]
+                ]
+            ],
+            // First two elements of pi_c
+            c: [
+                proof.pi_c[0],
+                proof.pi_c[1]
+            ]
+        };
+        // Take first 5 public signals
+        const formattedPublicSignals = publicSignals.slice(0, 5);
+        return {
+            proof: formattedProof,
+            publicSignals: formattedPublicSignals
+        };
     }
     catch (error) {
         console.error("Error generating proof:", error);
         throw new Error("Proof generation failed");
     }
 }
-// Proof Management Functions
+// Store proof in database
+async function storeProof(userId, proofData) {
+    try {
+        const proof = new proof_1.default({
+            userId,
+            proofData,
+            timestamp: new Date()
+        });
+        return await proof.save();
+    }
+    catch (error) {
+        console.error("Error storing proof:", error);
+        throw new Error("Failed to store proof");
+    }
+}
 class ProofService {
     // Get all proofs for a user
     static async getAllProofsForUser(userId) {
         return proof_1.default.find({ userId });
     }
-    // Get proof by ID
+    // Get single proof by ID
     static async getProofById(proofId) {
         return proof_1.default.findById(proofId);
     }
-    // Update proof by ID
+    // Update proof
     static async updateProof(proofId, updateData) {
         return proof_1.default.findByIdAndUpdate(proofId, updateData, { new: true });
     }
-    // Delete proof by ID
+    // Delete proof
     static async deleteProof(proofId) {
         return proof_1.default.findByIdAndDelete(proofId);
+    }
+    // Generate and submit proof to contract
+    static async generateAndSubmitProof(contract, inputData, circuitWasmPath, zkeyPath, userId, userAddress) {
+        try {
+            // Generate formatted proof
+            const { proof, publicSignals } = await generateProof(inputData, circuitWasmPath, zkeyPath, userId);
+            // Submit to contract
+            const tx = await contract.submitProof(userAddress, proof.a, proof.b, proof.c, publicSignals);
+            // Wait for transaction
+            const receipt = await tx.wait();
+            // Store proof in database
+            await storeProof(userId, {
+                proof,
+                publicSignals,
+                transactionHash: receipt.transactionHash
+            });
+            return {
+                success: true,
+                transactionHash: receipt.transactionHash,
+                proof,
+                publicSignals
+            };
+        }
+        catch (error) {
+            console.error("Error in proof generation and submission:", error);
+            throw error;
+        }
     }
 }
 exports.ProofService = ProofService;

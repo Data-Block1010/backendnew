@@ -107,7 +107,7 @@ class DataController {
             });
             await newProof.save();
             // Return the proof and public signals in the response
-            res.json({ proof, publicSignals });
+            res.json({ proof, publicSignals, newProof });
         }
         catch (error) {
             console.error("Error in generateUserProof:", error.message);

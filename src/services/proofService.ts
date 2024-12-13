@@ -3,75 +3,179 @@ import * as fs from 'fs';
 import path from 'path';
 import { promisify } from 'util';
 import Proof from '../models/proof';
-// Use `exec` in async mode
+
+// Use exec in async mode
 const execAsync = promisify(exec);
 
-// Function to create unique temp directory for each user session
+// Create unique temp directory
 async function createTempDir(userId: string): Promise<string> {
     const tempDir = path.join(__dirname, `temp/${userId}`);
     await fs.promises.mkdir(tempDir, { recursive: true });
     return tempDir;
 }
 
+// Generate and format proof for contract
 export async function generateProof(
-    inputData: any, 
-    circuitWasmPath: string, 
-    zkeyPath: string, 
-    userId: string // Add userId to ensure unique directories
-): Promise<{ proof: any; publicSignals: any }> {
+    inputData: any,
+    circuitWasmPath: string,
+    zkeyPath: string,
+    userId: string
+): Promise<{
+    proof: {
+        a: string[];
+        b: string[][];
+        c: string[];
+    };
+    publicSignals: string[];
+}> {
     try {
-        // Create a unique directory for the user session
+        // Create temp directory
         const tempDir = await createTempDir(userId);
 
-        // Define paths for user-specific files
+        // Setup file paths
         const inputJsonPath = path.join(tempDir, 'input.json');
         const witnessWtnsPath = path.join(tempDir, 'witness.wtns');
         const proofJsonPath = path.join(tempDir, 'proof.json');
         const publicJsonPath = path.join(tempDir, 'public.json');
 
-        // Write input data to input.json
+        // Write input data
         await fs.promises.writeFile(inputJsonPath, JSON.stringify(inputData));
 
-        // Generate the witness (asynchronous execution)
+        // Generate witness
         await execAsync(`snarkjs wtns calculate ${circuitWasmPath} ${inputJsonPath} ${witnessWtnsPath}`);
 
-        // Generate the proof (asynchronous execution)
+        // Generate proof
         await execAsync(`snarkjs groth16 prove ${zkeyPath} ${witnessWtnsPath} ${proofJsonPath} ${publicJsonPath}`);
 
-        // Read and return the generated proof and public signals
+        // Read generated files
         const proof = JSON.parse(await fs.promises.readFile(proofJsonPath, 'utf8'));
-        
         const publicSignals = JSON.parse(await fs.promises.readFile(publicJsonPath, 'utf8'));
 
-        // Optionally clean up the temporary files after generation (if needed)
+        // Clean up temp files
         await fs.promises.rm(tempDir, { recursive: true, force: true });
 
-        return { proof, publicSignals };
+        // Format proof for smart contract
+        const formattedProof = {
+            // First two elements of pi_a
+            a: [
+                proof.pi_a[0],
+                proof.pi_a[1]
+            ],
+            // Switch coordinates in pi_b
+            b: [
+                [
+                    proof.pi_b[0][1],
+                    proof.pi_b[0][0]
+                ],
+                [
+                    proof.pi_b[1][1],
+                    proof.pi_b[1][0]
+                ]
+            ],
+            // First two elements of pi_c
+            c: [
+                proof.pi_c[0],
+                proof.pi_c[1]
+            ]
+        };
+
+        // Take first 5 public signals
+        const formattedPublicSignals = publicSignals.slice(0, 5);
+
+        return {
+            proof: formattedProof,
+            publicSignals: formattedPublicSignals
+        };
+
     } catch (error) {
         console.error("Error generating proof:", error);
         throw new Error("Proof generation failed");
     }
-    
 }
-// Proof Management Functions
+
+// Store proof in database
+export async function storeProof(userId: string, proofData: any): Promise<any> {
+    try {
+        const proof = new Proof({
+            userId,
+            proofData,
+            timestamp: new Date()
+        });
+        return await proof.save();
+    } catch (error) {
+        console.error("Error storing proof:", error);
+        throw new Error("Failed to store proof");
+    }
+}
+
 export class ProofService {
     // Get all proofs for a user
     static async getAllProofsForUser(userId: string) {
         return Proof.find({ userId });
     }
 
-    // Get proof by ID
+    // Get single proof by ID
     static async getProofById(proofId: string) {
         return Proof.findById(proofId);
     }
 
-    // Update proof by ID
+    // Update proof
     static async updateProof(proofId: string, updateData: any) {
         return Proof.findByIdAndUpdate(proofId, updateData, { new: true });
     }
 
-    // Delete proof by ID
+    // Delete proof
     static async deleteProof(proofId: string) {
         return Proof.findByIdAndDelete(proofId);
+    }
+
+    // Generate and submit proof to contract
+    static async generateAndSubmitProof(
+        contract: any,
+        inputData: any,
+        circuitWasmPath: string,
+        zkeyPath: string,
+        userId: string,
+        userAddress: string
+    ) {
+        try {
+            // Generate formatted proof
+            const { proof, publicSignals } = await generateProof(
+                inputData,
+                circuitWasmPath,
+                zkeyPath,
+                userId
+            );
+
+            // Submit to contract
+            const tx = await contract.submitProof(
+                userAddress,
+                proof.a,
+                proof.b,
+                proof.c,
+                publicSignals
+            );
+
+            // Wait for transaction
+            const receipt = await tx.wait();
+
+            // Store proof in database
+            await storeProof(userId, {
+                proof,
+                publicSignals,
+                transactionHash: receipt.transactionHash
+            });
+
+            return {
+                success: true,
+                transactionHash: receipt.transactionHash,
+                proof,
+                publicSignals
+            };
+
+        } catch (error) {
+            console.error("Error in proof generation and submission:", error);
+            throw error;
+        }
     }
 }
