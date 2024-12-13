@@ -11,6 +11,7 @@ const db_1 = __importDefault(require("./db"));
 const express_1 = __importDefault(require("express"));
 const multer_1 = __importDefault(require("multer"));
 const web3_1 = __importDefault(require("web3"));
+const ethers_1 = require("ethers");
 const mongoose_1 = __importDefault(require("mongoose"));
 const cors_1 = __importDefault(require("cors"));
 const helmet_1 = __importDefault(require("helmet"));
@@ -160,6 +161,18 @@ AppDataSource.initialize()
      *     tags: [Proofs]
      *     security:
      *       - bearerAuth: []
+     *     requestBody:
+     *       required: true
+     *       content:
+     *         application/json:
+     *           schema:
+     *             type: object
+     *             properties:
+     *               walletAddress:
+     *                 type: string
+     *                 description: The user's wallet address
+     *             required:
+     *               - walletAddress
      *     responses:
      *       200:
      *         description: Proof generated successfully
@@ -189,14 +202,19 @@ AppDataSource.initialize()
                 return res.status(401).json({ message: 'Unauthorized' });
             }
             const userId = req.user; // Get the user ID from the request
-            //const { username, secretKey, circuitWasmPath, zkeyPath, filename } = req.body;
+            const { walletAddress } = req.body;
+            // Validate wallet address
+            if (!walletAddress || !(0, ethers_1.isAddress)(walletAddress)) {
+                return res.status(400).json({ error: 'Invalid or missing wallet address' });
+            }
             // Fetch the user's KYC details
             const kycDetails = await KYC_1.default.findOne({ user: userId });
             if (!kycDetails) {
                 return res.status(404).json({ error: 'KYC details not found for the user' });
             }
-            // Construct the inputData from KYC details
+            // Construct the inputData from KYC details and wallet address
             req.body.inputData = {
+                // Include the user's wallet address
                 dateOfBirth: new Date(kycDetails.dateOfBirth).getTime(), // Convert to timestamp
                 currentDate: Date.now(), // Current timestamp
                 name: str_numService_1.default.stringToNumber(kycDetails.name), // Convert name to BigInt
@@ -206,9 +224,12 @@ AppDataSource.initialize()
                 expectedIDNumber: str_numService_1.default.stringToNumber(kycDetails.idNumber), // Convert expected ID number to BigInt
                 expectedNationality: str_numService_1.default.stringToNumber(kycDetails.nationality), // Convert expected nationality to BigInt
                 kycVerified: kycDetails.kycVerified,
-                // Additional parameters can be added here if needed
             };
             console.log("Updated request body with input data:", req.body);
+            // Update the KYC record with the wallet address if it isn't already stored
+            if (kycDetails.walletAddress !== walletAddress) {
+                await KYC_1.default.findOneAndUpdate({ user: userId }, { $set: { walletAddress: walletAddress } }, { new: true });
+            }
             // Call the method to generate proof with the updated request body
             await dataController_1.DataController.generateUserProof(req, res);
         }
@@ -352,6 +373,54 @@ AppDataSource.initialize()
      *         description: Internal server error.
      */
     app.get('/api/proofs', authMiddleware_1.authenticate, proofController_1.default.getAll);
+    /**
+     * @swagger
+     * /api/proofs/address:
+     *   get:
+     *     summary: Retrieve the latest proof for a specific wallet address
+     *     tags: [Proofs]
+     *     parameters:
+     *       - in: query
+     *         name: address
+     *         required: true
+     *         schema:
+     *           type: string
+     *         description: The wallet address to retrieve the proof for
+     *     responses:
+     *       200:
+     *         description: Proof retrieved successfully
+     *         content:
+     *           application/json:
+     *             schema:
+     *               type: object
+     *               properties:
+     *                 proof:
+     *                   type: object
+     *                   description: The latest proof associated with the wallet address
+     *       400:
+     *         description: Missing or invalid address
+     *       404:
+     *         description: Proof not found for the specified address
+     *       500:
+     *         description: An internal server error occurred
+     */
+    app.get('/api/proofs/address', authMiddleware_1.authenticate, async (req, res) => {
+        try {
+            const { address } = req.query;
+            if (!address || typeof address !== 'string') {
+                return res.status(400).json({ error: 'A valid wallet address is required' });
+            }
+            const proof = await proofController_1.default.getProofbyAddress(address);
+            if (!proof) {
+                return res.status(404).json({ error: 'Proof not found for the specified address' });
+            }
+            return res.status(200).json({ proof });
+        }
+        catch (error) {
+            console.error('Error retrieving proof:', error);
+            return res.status(500).json({ error: 'Internal server error' });
+        }
+    });
     /**
      * @swagger
      * /api/proofs/{proofId}:

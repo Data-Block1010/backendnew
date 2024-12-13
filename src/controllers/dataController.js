@@ -28,6 +28,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.DataController = void 0;
 const multer_1 = __importDefault(require("multer"));
+const ethers_1 = require("ethers");
 const ipfsService_1 = require("../services/ipfsService");
 const zkSyncService_1 = require("../services/zkSyncService");
 const UserDataHash_1 = __importDefault(require("../models/UserDataHash")); // Import UserDataHash model
@@ -67,52 +68,65 @@ class DataController {
     }
     static async generateUserProof(req, res) {
         try {
-            const { inputData } = req.body;
-            if (!inputData) {
-                return res.status(400).json({ error: "Missing required fields" });
+            const { inputData, walletAddress } = req.body;
+            // Validate input data
+            if (!inputData || !walletAddress) {
+                return res.status(400).json({ error: "Missing required fields (inputData or walletAddress)" });
+            }
+            // Validate wallet address format
+            if (!(0, ethers_1.isAddress)(walletAddress)) {
+                return res.status(400).json({ error: "Invalid wallet address format" });
             }
             const circuitWasmPath = "kycVerification_js/kycVerification.wasm";
             const zkeyPath = "kycVerification_0001.zkey";
             console.log("Request Body:", req.body);
             const userId = req.user;
-            const user = await User_1.default.findOne({ _id: userId }); // Mongoose query to find the user
+            // Check if the user exists
+            const user = await User_1.default.findOne({ _id: userId });
             if (!user) {
-                console.error("User not found for username:", userId);
+                console.error("User not found for userId:", userId);
                 return res.status(404).json({ error: "User not found" });
             }
-            // const userDataHash = await UserDataHash.findOne({ user: user._id, filename }); // Find the hash in the database
-            // if (!userDataHash) {
-            //     console.error("User data hash not found for filename:", filename);
-            //     return res.status(404).json({ error: "User data hash not found" });
-            // }
-            // const cid = userDataHash.cid; // Fetch the CID
-            // if (!cid) {
-            //     console.error("CID not found for filename:", filename);
-            //     return res.status(404).json({ error: "CID not found" });
-            // }
-            // Fetch the encrypted data from IPFS
-            // const fileUrl = `https://gateway.pinata.cloud/ipfs/${cid}`;
-            // const response = await axios.get(fileUrl);
-            // const encryptedData = response.data;
-            // // Decrypt the data using the secret key
-            // const decryptedData = IpfsService.decryptData(encryptedData, secretKey);
-            // Generate a cryptographic proof using the decrypted data
-            const { proof, publicSignals } = await (0, proofService_1.generateProof)(inputData, circuitWasmPath, zkeyPath, user._id // Pass user ID for proof generation
-            );
-            // Save the proof and public signals to MongoDB
+            // Generate the proof
+            const { proof, publicSignals } = await (0, proofService_1.generateProof)(inputData, circuitWasmPath, zkeyPath, user._id);
+            // Check if wallet address is already associated with a proof
+            const existingProof = await proof_1.default.findOne({ userAddress: walletAddress });
+            if (existingProof) {
+                return res.status(400).json({
+                    error: "Wallet address already associated with a proof",
+                    proofId: existingProof._id,
+                });
+            }
+            // Save the proof along with wallet address
             const newProof = new proof_1.default({
                 userId: user._id,
+                userAddress: walletAddress,
                 proofData: proof,
                 publicSignals: publicSignals,
             });
             await newProof.save();
-            // Return the proof and public signals in the response
-            res.json({ proof, publicSignals, newProof });
+            // Return proof data with wallet address
+            return res.status(200).json({
+                proof,
+                publicSignals,
+                proofId: newProof._id,
+                userAddress: walletAddress,
+            });
         }
         catch (error) {
             console.error("Error in generateUserProof:", error.message);
             console.error("Stack Trace:", error.stack);
-            res.status(500).json({ error: error.message });
+            // Handle MongoDB duplicate key error specifically
+            if (error.code === 11000) {
+                return res.status(400).json({
+                    error: "Duplicate entry: Wallet address already exists in the database",
+                });
+            }
+            // Catch-all for other errors
+            return res.status(500).json({
+                error: "Internal server error",
+                details: error.message || "An error occurred while generating the proof",
+            });
         }
     }
     static async storeData(req, res) {

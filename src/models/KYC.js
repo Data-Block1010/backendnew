@@ -38,7 +38,7 @@ const KYCSchema = new mongoose_1.Schema({
     idNumber: {
         type: String,
         required: true,
-        unique: true, // Ensure ID numbers are unique
+        unique: true,
     },
     nationality: {
         type: String,
@@ -46,16 +46,22 @@ const KYCSchema = new mongoose_1.Schema({
     },
     kycVerified: {
         type: Boolean,
-        default: false, // Default to false until verified
+        default: false,
+    },
+    walletAddress: {
+        type: String,
+        required: true,
+        unique: true, // Each wallet address should be unique
+        index: true // Add index for faster queries
     },
     createdAt: {
         type: Date,
-        default: Date.now, // Automatically set the creation date
+        default: Date.now,
     },
     user: {
         type: mongoose_1.default.Schema.Types.ObjectId,
-        ref: 'User', // Reference to User model
-        required: true, // Ensure that a user is associated with the KYC record
+        ref: 'User',
+        required: true,
     },
 }, { timestamps: true });
 // Method to calculate age
@@ -64,11 +70,14 @@ KYCSchema.methods.getAge = function () {
     const birthDate = new Date(this.dateOfBirth);
     let age = today.getFullYear() - birthDate.getFullYear();
     const monthDifference = today.getMonth() - birthDate.getMonth();
-    // Adjust age if the birthday hasn't occurred yet this year
     if (monthDifference < 0 || (monthDifference === 0 && today.getDate() < birthDate.getDate())) {
         age--;
     }
     return age;
+};
+// Add static method to find by wallet address
+KYCSchema.statics.findByWalletAddress = function (walletAddress) {
+    return this.findOne({ walletAddress });
 };
 // Create a model from the schema
 const KYC = mongoose_1.default.model('KYC', KYCSchema);

@@ -94,10 +94,11 @@ export async function generateProof(
 }
 
 // Store proof in database
-export async function storeProof(userId: string, proofData: any): Promise<any> {
+export async function storeProof(userId: string,userAddress: string, proofData: any): Promise<any> {
     try {
         const proof = new Proof({
             userId,
+            userAddress,
             proofData,
             timestamp: new Date()
         });
@@ -108,12 +109,35 @@ export async function storeProof(userId: string, proofData: any): Promise<any> {
     }
 }
 
+
+
 export class ProofService {
     // Get all proofs for a user
     static async getAllProofsForUser(userId: string) {
         return Proof.find({ userId });
     }
-
+    static async getProofByAddress(userAddress: string) {
+        try {
+            const proof = await Proof.findOne({ userAddress })
+                .sort({ createdAt: -1 }); // Get the latest proof
+            return proof;
+        } catch (error) {
+            console.error("Error getting proof by address:", error);
+            throw new Error("Failed to get proof by address");
+        }
+    }
+    
+    // Get all proofs for an address
+    static async getAllProofsByAddress(userAddress: string) {
+        try {
+            const proofs = await Proof.find({ userAddress })
+                .sort({ createdAt: -1 }); // Sort by newest first
+            return proofs;
+        } catch (error) {
+            console.error("Error getting proofs by address:", error);
+            throw new Error("Failed to get proofs by address");
+        }
+    }
     // Get single proof by ID
     static async getProofById(proofId: string) {
         return Proof.findById(proofId);
@@ -129,53 +153,5 @@ export class ProofService {
         return Proof.findByIdAndDelete(proofId);
     }
 
-    // Generate and submit proof to contract
-    static async generateAndSubmitProof(
-        contract: any,
-        inputData: any,
-        circuitWasmPath: string,
-        zkeyPath: string,
-        userId: string,
-        userAddress: string
-    ) {
-        try {
-            // Generate formatted proof
-            const { proof, publicSignals } = await generateProof(
-                inputData,
-                circuitWasmPath,
-                zkeyPath,
-                userId
-            );
-
-            // Submit to contract
-            const tx = await contract.submitProof(
-                userAddress,
-                proof.a,
-                proof.b,
-                proof.c,
-                publicSignals
-            );
-
-            // Wait for transaction
-            const receipt = await tx.wait();
-
-            // Store proof in database
-            await storeProof(userId, {
-                proof,
-                publicSignals,
-                transactionHash: receipt.transactionHash
-            });
-
-            return {
-                success: true,
-                transactionHash: receipt.transactionHash,
-                proof,
-                publicSignals
-            };
-
-        } catch (error) {
-            console.error("Error in proof generation and submission:", error);
-            throw error;
-        }
-    }
+    
 }

@@ -10,7 +10,8 @@ export interface IKYC extends Document {
     kycVerified: boolean;
     createdAt: Date;
     user: mongoose.Types.ObjectId; // Reference to User
-    getAge(): number; // Method to calculate age
+    walletAddress: string;        // Added wallet address
+    getAge(): number;
 }
 
 // Define the KYC schema
@@ -26,7 +27,7 @@ const KYCSchema: Schema = new Schema({
     idNumber: {
         type: String,
         required: true,
-        unique: true, // Ensure ID numbers are unique
+        unique: true,
     },
     nationality: {
         type: String,
@@ -34,16 +35,22 @@ const KYCSchema: Schema = new Schema({
     },
     kycVerified: {
         type: Boolean,
-        default: false, // Default to false until verified
+        default: false,
+    },
+    walletAddress: {            // Added wallet address field
+        type: String,
+        required: true,
+        unique: true,           // Each wallet address should be unique
+        index: true            // Add index for faster queries
     },
     createdAt: {
         type: Date,
-        default: Date.now, // Automatically set the creation date
+        default: Date.now,
     },
     user: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'User', // Reference to User model
-        required: true, // Ensure that a user is associated with the KYC record
+        ref: 'User',
+        required: true,
     },
 }, { timestamps: true });
 
@@ -54,7 +61,6 @@ KYCSchema.methods.getAge = function (): number {
     let age = today.getFullYear() - birthDate.getFullYear();
     const monthDifference = today.getMonth() - birthDate.getMonth();
     
-    // Adjust age if the birthday hasn't occurred yet this year
     if (monthDifference < 0 || (monthDifference === 0 && today.getDate() < birthDate.getDate())) {
         age--;
     }
@@ -62,7 +68,17 @@ KYCSchema.methods.getAge = function (): number {
     return age;
 };
 
+// Add static method to find by wallet address
+KYCSchema.statics.findByWalletAddress = function(walletAddress: string) {
+    return this.findOne({ walletAddress });
+};
+
+// Create interface for model with static methods
+interface KYCModel extends mongoose.Model<IKYC> {
+    findByWalletAddress(walletAddress: string): Promise<IKYC | null>;
+}
+
 // Create a model from the schema
-const KYC = mongoose.model<IKYC>('KYC', KYCSchema);
+const KYC = mongoose.model<IKYC, KYCModel>('KYC', KYCSchema);
 
 export default KYC;

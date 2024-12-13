@@ -25,10 +25,29 @@ var __importStar = (this && this.__importStar) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const mongoose_1 = __importStar(require("mongoose"));
 const ProofSchema = new mongoose_1.Schema({
-    userId: { type: String, required: true },
-    proofData: { type: Object, required: true },
-    publicSignals: { type: Object, required: true },
-    createdAt: { type: Date, default: Date.now }
+    userId: {
+        type: String,
+        required: true
+    },
+    userAddress: {
+        type: String,
+        required: true,
+        index: true // Add index for faster queries
+    },
+    proofData: {
+        type: Object,
+        required: true
+    },
+    publicSignals: {
+        type: Object,
+        required: true
+    },
+    createdAt: {
+        type: Date,
+        default: Date.now
+    }
 });
+// Add index for both userId and userAddress for faster compound queries
+ProofSchema.index({ userId: 1, userAddress: 1 });
 const Proof = mongoose_1.default.model('Proof', ProofSchema);
 exports.default = Proof;
