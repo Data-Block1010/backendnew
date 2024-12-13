@@ -39,6 +39,21 @@ class ProofController {
             res.status(500).json({ error: 'An error occurred while retrieving proofs' });
         }
     }
+    static async getProofbyAddress(address) {
+        try {
+            console.log('Fetching proofs for user ID:', address);
+            // Fetch proofs for the user
+            const proofs = await proofService_1.ProofService.getProofByAddress(address);
+            if (!proofs) {
+                return null;
+            }
+            return proofs;
+        }
+        catch (error) {
+            console.error('Error retrieving proofs:', error);
+            throw error;
+        }
+    }
     // Get a proof by ID
     static async getById(req, res) {
         try {

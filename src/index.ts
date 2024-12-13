@@ -1,15 +1,17 @@
 // src/app.ts
 import 'reflect-metadata';
+
 import { DataSource } from 'typeorm';
 import { SecretKeyService } from './services/secretKeyService';
 import dbConnect from './db'; 
 import express from 'express';
 import multer from 'multer';
 import Web3 from "web3";
+import ethers, { isAddress } from "ethers"
 import mongoose from 'mongoose';
 import cors from 'cors'; 
 import helmet from 'helmet'; 
-import { generateProof } from './services/proofService';
+import { generateProof, ProofService } from './services/proofService';
 import { verifyProofOnChain, verifyProofOffChain } from './services/verifyProofService';
 import { DataController } from './controllers/dataController';
 import { authenticate } from './middleware/authMiddleware';
@@ -29,6 +31,7 @@ import { WaitlistController } from './controllers/waitListController'
 import { DemoRequest } from './models/demo-request';
 import { DemoRequestService } from './services/demo-requestService';
 import { EmailService } from './services/emailService';
+import { Request, Response } from 'express';  // Add this import at the top
 
 // Add these imports after your existing imports
 const emailService = new EmailService();
@@ -169,6 +172,18 @@ AppDataSource.initialize()
  *     tags: [Proofs]
  *     security:
  *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               walletAddress:
+ *                 type: string
+ *                 description: The user's wallet address
+ *             required:
+ *               - walletAddress
  *     responses:
  *       200:
  *         description: Proof generated successfully
@@ -192,13 +207,19 @@ AppDataSource.initialize()
  *       500:
  *         description: Server error
  */
-app.post('/generate-proof', authenticate, async (req:any, res) => {
+app.post('/generate-proof', authenticate, async (req: any, res) => {
     try {
         if (!req.user) {
             return res.status(401).json({ message: 'Unauthorized' });
-          }
+        }
+
         const userId = req.user; // Get the user ID from the request
-        //const { username, secretKey, circuitWasmPath, zkeyPath, filename } = req.body;
+        const { walletAddress } = req.body;
+
+        // Validate wallet address
+        if (!walletAddress || !isAddress(walletAddress)) {
+            return res.status(400).json({ error: 'Invalid or missing wallet address' });
+        }
 
         // Fetch the user's KYC details
         const kycDetails = await KYC.findOne({ user: userId });
@@ -206,8 +227,9 @@ app.post('/generate-proof', authenticate, async (req:any, res) => {
             return res.status(404).json({ error: 'KYC details not found for the user' });
         }
 
-        // Construct the inputData from KYC details
+        // Construct the inputData from KYC details and wallet address
         req.body.inputData = {
+             // Include the user's wallet address
             dateOfBirth: new Date(kycDetails.dateOfBirth).getTime(), // Convert to timestamp
             currentDate: Date.now(), // Current timestamp
             name: StringNumberService.stringToNumber(kycDetails.name), // Convert name to BigInt
@@ -217,10 +239,18 @@ app.post('/generate-proof', authenticate, async (req:any, res) => {
             expectedIDNumber: StringNumberService.stringToNumber(kycDetails.idNumber), // Convert expected ID number to BigInt
             expectedNationality: StringNumberService.stringToNumber(kycDetails.nationality), // Convert expected nationality to BigInt
             kycVerified: kycDetails.kycVerified,
-            // Additional parameters can be added here if needed
         };
 
         console.log("Updated request body with input data:", req.body);
+
+        // Update the KYC record with the wallet address if it isn't already stored
+        if (kycDetails.walletAddress !== walletAddress) {
+            await KYC.findOneAndUpdate(
+                { user: userId },
+                { $set: { walletAddress: walletAddress } },
+                { new: true }
+            );
+        }
 
         // Call the method to generate proof with the updated request body
         await DataController.generateUserProof(req, res);
@@ -230,6 +260,7 @@ app.post('/generate-proof', authenticate, async (req:any, res) => {
         res.status(500).json({ error: "Internal server error" });
     }
 });
+
 
         // Verify Proof API
 /**
@@ -373,6 +404,60 @@ app.post('/verify-proof', authenticate, async (req:any, res) => {
  *         description: Internal server error.
  */
 app.get('/api/proofs', authenticate, ProofController.getAll);
+/**
+ * @swagger
+ * /api/proofs/address:
+ *   get:
+ *     summary: Retrieve the latest proof for a specific wallet address
+ *     tags: [Proofs]
+ *     parameters:
+ *       - in: query
+ *         name: address
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: The wallet address to retrieve the proof for
+ *     responses:
+ *       200:
+ *         description: Proof retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 proof:
+ *                   type: object
+ *                   description: The latest proof associated with the wallet address
+ *       400:
+ *         description: Missing or invalid address
+ *       404:
+ *         description: Proof not found for the specified address
+ *       500:
+ *         description: An internal server error occurred
+ */
+app.get('/api/proofs/address', authenticate, async (req: Request, res: Response) => {
+    try {
+        const { address } = req.query;
+
+        if (!address || typeof address !== 'string') {
+            return res.status(400).json({ error: 'A valid wallet address is required' });
+        }
+
+        const proof = await ProofController.getProofbyAddress(address);
+
+        if (!proof) {
+            return res.status(404).json({ error: 'Proof not found for the specified address' });
+        }
+
+        return res.status(200).json({ proof });
+    } catch (error) {
+        console.error('Error retrieving proof:', error);
+        return res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+
+
 
 /**
  * @swagger
