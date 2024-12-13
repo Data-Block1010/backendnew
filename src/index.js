@@ -404,7 +404,7 @@ AppDataSource.initialize()
      *       500:
      *         description: An internal server error occurred
      */
-    app.get('/api/proofs/address', authMiddleware_1.authenticate, async (req, res) => {
+    app.get('/api/proofs/address', async (req, res) => {
         try {
             const { address } = req.query;
             if (!address || typeof address !== 'string') {
