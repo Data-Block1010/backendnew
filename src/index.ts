@@ -435,7 +435,7 @@ app.get('/api/proofs', authenticate, ProofController.getAll);
  *       500:
  *         description: An internal server error occurred
  */
-app.get('/api/proofs/address', authenticate, async (req: Request, res: Response) => {
+app.get('/api/proofs/address',  async (req: Request, res: Response) => {
     try {
         const { address } = req.query;
 
