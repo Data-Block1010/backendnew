@@ -50,7 +50,6 @@ const KYCSchema = new mongoose_1.Schema({
     },
     walletAddress: {
         type: String,
-        required: true,
         unique: true, // Each wallet address should be unique
         index: true // Add index for faster queries
     },
