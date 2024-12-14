@@ -39,7 +39,6 @@ const KYCSchema: Schema = new Schema({
     },
     walletAddress: {            // Added wallet address field
         type: String,
-        required: true,
         unique: true,           // Each wallet address should be unique
         index: true            // Add index for faster queries
     },
