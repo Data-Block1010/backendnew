@@ -8,6 +8,7 @@ require("reflect-metadata");
 const typeorm_1 = require("typeorm");
 const secretKeyService_1 = require("./services/secretKeyService");
 const db_1 = __importDefault(require("./db"));
+const CompanyController_1 = require("./controllers/CompanyController");
 const express_1 = __importDefault(require("express"));
 const multer_1 = __importDefault(require("multer"));
 const web3_1 = __importDefault(require("web3"));
@@ -151,6 +152,111 @@ AppDataSource.initialize()
         catch (err) {
             const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred';
             res.status(401).json({ error: errorMessage });
+        }
+    });
+    /**
+     * @swagger
+     * /api/companies/signup:
+     *   post:
+     *     summary: Register a new company
+     *     tags: [Companies]
+     *     requestBody:
+     *       required: true
+     *       content:
+     *         application/json:
+     *           schema:
+     *             type: object
+     *             required:
+     *               - name
+     *               - email
+     *               - walletAddress
+     *             properties:
+     *               name:
+     *                 type: string
+     *               email:
+     *                 type: string
+     *               walletAddress:
+     *                 type: string
+     *               businessDocuments:
+     *                 type: array
+     *                 items:
+     *                   type: string
+     *               kycRequirements:
+     *                 type: array
+     *                 items:
+     *                   type: string
+     *     responses:
+     *       201:
+     *         description: Company registered successfully
+     *       400:
+     *         description: Missing required fields
+     *       409:
+     *         description: Company already exists
+     *       500:
+     *         description: Server error
+     */
+    app.post('/api/companies/signup', async (req, res) => {
+        try {
+            const { name, email, walletAddress, businessDocuments, kycRequirements } = req.body;
+            // Validate required fields
+            if (!name || !email || !walletAddress) {
+                return res.status(400).json({
+                    error: 'Missing required fields'
+                });
+            }
+            // Validate wallet address
+            if (!(0, ethers_1.isAddress)(walletAddress)) {
+                return res.status(400).json({
+                    error: 'Invalid wallet address'
+                });
+            }
+            // Create company with status "pending"
+            await CompanyController_1.CompanyController.signup(req, res);
+            // Send email notification to admin
+            await emailService.sendEmail(process.env.ADMIN_EMAIL || '', 'New Company Registration', `New company registration: ${name}\nEmail: ${email}\nWallet: ${walletAddress}`);
+        }
+        catch (error) {
+            console.error('Company signup error:', error);
+            return res.status(500).json({
+                error: 'Failed to register company'
+            });
+        }
+    });
+    /**
+     * @swagger
+     * /api/companies/wallet/{walletAddress}:
+     *   get:
+     *     summary: Get company by wallet address
+     *     tags: [Companies]
+     *     parameters:
+     *       - in: path
+     *         name: walletAddress
+     *         required: true
+     *         schema:
+     *           type: string
+     *     responses:
+     *       200:
+     *         description: Company details retrieved successfully
+     *       404:
+     *         description: Company not found
+     *       500:
+     *         description: Server error
+     */
+    app.get('/api/companies/wallet/:walletAddress', async (req, res) => {
+        try {
+            const { walletAddress } = req.params;
+            if (!(0, ethers_1.isAddress)(walletAddress)) {
+                return res.status(400).json({
+                    error: 'Invalid wallet address'
+                });
+            }
+            await CompanyController_1.CompanyController.getCompanyByWallet(req, res);
+        }
+        catch (error) {
+            console.error('Get company error:', error);
+            return res.status(500).json({
+                error: 'Failed to get company details'
+            });
         }
     });
     /**
