@@ -9,14 +9,15 @@ const crypto_1 = __importDefault(require("crypto"));
 class CompanyController {
     static async signup(req, res) {
         try {
-            const { name, email, walletAddress, businessDocuments, kycRequirements } = req.body;
+            const { name, website, email, integrationPurpose, maxUsers, projectDescription, logo, walletAddress, businessDocuments, kycRequirements } = req.body;
             // Validate required fields
-            if (!name || !email || !walletAddress) {
+            if (!name || !website || !email || !integrationPurpose || !maxUsers ||
+                !projectDescription || !logo || !walletAddress) {
                 return res.status(400).json({
                     error: 'Missing required fields'
                 });
             }
-            // Check if company already exists
+            // Check if company exists
             const existingCompany = await Company_1.default.findOne({
                 $or: [{ email }, { walletAddress }]
             });
@@ -31,7 +32,12 @@ class CompanyController {
             // Create company
             const company = new Company_1.default({
                 name,
+                website,
                 email,
+                integrationPurpose,
+                maxUsers,
+                projectDescription,
+                logo,
                 walletAddress,
                 businessDocuments: businessDocuments || [],
                 kycRequirements: kycRequirements || [],
@@ -39,12 +45,16 @@ class CompanyController {
                 apiKey: crypto_1.default.randomBytes(32).toString('hex')
             });
             await company.save();
-            // Return success response
             return res.status(201).json({
                 message: 'Company registered successfully',
                 company: {
                     name: company.name,
+                    website: company.website,
                     email: company.email,
+                    integrationPurpose: company.integrationPurpose,
+                    maxUsers: company.maxUsers,
+                    projectDescription: company.projectDescription,
+                    logo: company.logo,
                     walletAddress: company.walletAddress,
                     dedicatedPageUrl: company.dedicatedPageUrl,
                     status: company.status

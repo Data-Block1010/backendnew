@@ -25,26 +25,16 @@ var __importStar = (this && this.__importStar) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const mongoose_1 = __importStar(require("mongoose"));
 const CompanySchema = new mongoose_1.Schema({
-    name: {
-        type: String,
-        required: true
-    },
-    email: {
-        type: String,
-        required: true,
-        unique: true
-    },
-    walletAddress: {
-        type: String,
-        required: true,
-        unique: true
-    },
-    businessDocuments: [{
-            type: String
-        }],
-    kycRequirements: [{
-            type: String
-        }],
+    name: { type: String, required: true },
+    website: { type: String, required: true },
+    email: { type: String, required: true, unique: true },
+    integrationPurpose: { type: String, required: true },
+    maxUsers: { type: Number, required: true },
+    projectDescription: { type: String, required: true },
+    logo: { type: String, required: true },
+    walletAddress: { type: String, required: true, unique: true },
+    businessDocuments: [{ type: String }],
+    kycRequirements: [{ type: String }],
     status: {
         type: String,
         enum: ['pending', 'active', 'suspended'],
@@ -58,14 +48,6 @@ const CompanySchema = new mongoose_1.Schema({
         type: String,
         unique: true,
         sparse: true
-    },
-    createdAt: {
-        type: Date,
-        default: Date.now
-    },
-    updatedAt: {
-        type: Date,
-        default: Date.now
     }
-});
+}, { timestamps: true });
 exports.default = mongoose_1.default.model('Company', CompanySchema);
