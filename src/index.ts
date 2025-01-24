@@ -168,81 +168,108 @@ AppDataSource.initialize()
 
 
 /**
- * @swagger
- * /api/companies/signup:
- *   post:
- *     summary: Register a new company
- *     tags: [Companies]
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - name
- *               - email
- *               - walletAddress
- *             properties:
- *               name:
- *                 type: string
- *               email:
- *                 type: string
- *               walletAddress:
- *                 type: string
- *               businessDocuments:
- *                 type: array
- *                 items:
- *                   type: string
- *               kycRequirements:
- *                 type: array
- *                 items:
- *                   type: string
- *     responses:
- *       201:
- *         description: Company registered successfully
- *       400:
- *         description: Missing required fields
- *       409:
- *         description: Company already exists
- *       500:
- *         description: Server error
- */
+* @swagger
+* /api/companies/signup:
+*   post:
+*     summary: Register a new company
+*     tags: [Companies]
+*     requestBody:
+*       required: true
+*       content:
+*         application/json:
+*           schema:
+*             type: object
+*             required:
+*               - name
+*               - website
+*               - email
+*               - integrationPurpose
+*               - maxUsers
+*               - projectDescription
+*               - logo
+*               - walletAddress
+*             properties:
+*               name:
+*                 type: string
+*               website:
+*                 type: string
+*               email:
+*                 type: string
+*               integrationPurpose:
+*                 type: string
+*               maxUsers:
+*                 type: integer
+*               projectDescription:
+*                 type: string
+*               logo:
+*                 type: string
+*               walletAddress:
+*                 type: string
+*               businessDocuments:
+*                 type: array
+*                 items:
+*                   type: string
+*               kycRequirements:
+*                 type: array
+*                 items:
+*                   type: string
+*     responses:
+*       201:
+*         description: Company registered successfully
+*       400:
+*         description: Missing required fields
+*       409:
+*         description: Company already exists
+*       500:
+*         description: Server error
+*/
 app.post('/api/companies/signup', async (req, res) => {
     try {
-        const { name, email, walletAddress, businessDocuments, kycRequirements } = req.body;
-
-        // Validate required fields
-        if (!name || !email || !walletAddress) {
+        const { 
+            name, 
+            website,
+            email, 
+            integrationPurpose,
+            maxUsers,
+            projectDescription,
+            logo,
+            walletAddress 
+        } = req.body;
+ 
+        if (!name || !website || !email || !integrationPurpose || !maxUsers || 
+            !projectDescription || !logo || !walletAddress) {
             return res.status(400).json({
                 error: 'Missing required fields'
             });
         }
-
-        // Validate wallet address
+ 
         if (!isAddress(walletAddress)) {
             return res.status(400).json({
                 error: 'Invalid wallet address'
             });
         }
-
-        // Create company with status "pending"
+ 
         await CompanyController.signup(req, res);
-
-        // Send email notification to admin
+ 
         await emailService.sendEmail(
             process.env.ADMIN_EMAIL || '',
             'New Company Registration',
-            `New company registration: ${name}\nEmail: ${email}\nWallet: ${walletAddress}`
+            `New company registration: ${name}
+            Website: ${website}
+            Email: ${email}
+            Integration Purpose: ${integrationPurpose}
+            Max Users: ${maxUsers}
+            Project Description: ${projectDescription}
+            Wallet: ${walletAddress}`
         );
-
+ 
     } catch (error) {
         console.error('Company signup error:', error);
         return res.status(500).json({
             error: 'Failed to register company'
         });
     }
-});
+ });
 
 /**
  * @swagger
@@ -2000,3 +2027,4 @@ app.patch('/api/demo-requests/:email/status', authenticate, async (req, res) => 
     //       "message": "Please ensure that your KYC documents are ready. After logging in, click the 'Start Verification' button to proceed."
     //     }
     //   } 
+    
