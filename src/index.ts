@@ -65,7 +65,8 @@ AppDataSource.initialize()
           const corsOptions = {
             origin: [
                 'http://localhost:3000', 
-                'https://backendnew-4hei.onrender.com/', 
+                'https://backendnew-4hei.onrender.com/',
+                'https://backendnew-wd64.onrender.com',
                 'https://secure-data.on-fleek.app', 
                 'https://securedata.on-fleek.app',
                 'https://sd-svc.onrender.com',
