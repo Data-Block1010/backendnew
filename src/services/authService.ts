@@ -1,7 +1,8 @@
 // src/services/authService.ts
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import User from '../models/User'; // Update the import path to your User model
+import User from '../models/User'; 
+import { ethers } from "ethers";// Update the import path to your User model
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your_jwt_secret';
 
@@ -23,6 +24,39 @@ export class AuthService {
             throw new Error('Invalid credentials');
         }
         const token = jwt.sign({ userId: user._id }, JWT_SECRET, { expiresIn: '1h' }); // Use _id for MongoDB
+        return token;
+    }
+
+    static async authenticateWithWallet(address: string, message: string, signature: string, username?: string): Promise<string> {
+        // Recover the address from the signed message
+        const recoveredAddress = ethers.verifyMessage(message, signature);
+
+        if (recoveredAddress.toLowerCase() !== address.toLowerCase()) {
+            throw new Error("Invalid signature");
+        }
+
+        // Check if user exists
+        let user = await User.findOne({ walletAddress: address });
+
+        // If the user does not exist, create a new one with the provided username
+        if (!user) {
+            if (!username) {
+                throw new Error("Username is required for new users");
+            }
+            user = new User({ walletAddress: address, username });
+            await user.save();
+        } else if (username && user.username !== username) {
+            // Prevent username changes after first registration
+            throw new Error("Username cannot be changed after registration");
+        }
+
+        // Generate a JWT token including username and walletAddress
+        const token = jwt.sign(
+            { userId: user._id, walletAddress: address, username: user.username },
+            JWT_SECRET,
+            { expiresIn: "1h" }
+        );
+
         return token;
     }
 
