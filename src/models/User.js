@@ -33,7 +33,6 @@ const UserSchema = new mongoose_1.Schema({
     },
     passwordHash: {
         type: String,
-        required: true,
     },
     isActive: {
         type: Boolean,
