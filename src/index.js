@@ -242,6 +242,68 @@ AppDataSource.initialize()
         }
     });
     /**
+    * @swagger
+    * /api/auth/wallet:
+    *   post:
+    *     summary: Authenticate user using wallet address and signature
+    *     tags: [Auth]
+    *     requestBody:
+    *       required: true
+    *       content:
+    *         application/json:
+    *           schema:
+    *             type: object
+    *             required:
+    *               - address
+    *               - message
+    *               - signature
+    *             properties:
+    *               address:
+    *                 type: string
+    *                 example: "0x1234567890abcdef1234567890abcdef12345678"
+    *               message:
+    *                 type: string
+    *                 example: "Sign this message to authenticate"
+    *               signature:
+    *                 type: string
+    *                 example: "0xabcdef123456..."
+    *               username:
+    *                 type: string
+    *                 example: "user123"
+    *                 description: "Required only for new users"
+    *     responses:
+    *       200:
+    *         description: Successful authentication
+    *         content:
+    *           application/json:
+    *             schema:
+    *               type: object
+    *               properties:
+    *                 token:
+    *                   type: string
+    *                   example: "eyJhbGciOiJIUzI1NiIsInR5cCI6..."
+    *       400:
+    *         description: Bad request (e.g., missing fields, invalid wallet)
+    *       401:
+    *         description: Unauthorized (e.g., invalid signature)
+    *       500:
+    *         description: Server error
+    */
+    app.post('/api/auth/wallet', async (req, res) => {
+        try {
+            const { address, message, signature, username } = req.body;
+            if (!address || !message || !signature) {
+                return res.status(400).json({ error: "Missing required fields" });
+            }
+            const token = await authService_1.AuthService.authenticateWithWallet(address, message, signature, username);
+            return res.json({ token });
+        }
+        catch (error) {
+            console.error("Wallet authentication error:", error);
+            return res.status(401).json({ error: error });
+        }
+    });
+    /**
      * @swagger
      * /api/companies/wallet/{walletAddress}:
      *   get:
