@@ -21,7 +21,7 @@ function setupSwagger(app) {
                     description: 'Development server',
                 },
                 {
-                    url: 'https://backendnew-4hei.onrender.com',
+                    url: 'https://backendnew-wd64.onrender.com',
                     description: 'Production server (Render)',
                 },
             ],
