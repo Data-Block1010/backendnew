@@ -21,11 +21,11 @@ class AuthService {
         await user.save(); // Save the user to the database
     }
     static async login(username, password) {
-        const user = await User_1.default.findOne({ username }); // Use Mongoose syntax
-        if (!user || !(await bcryptjs_1.default.compare(password, user.passwordHash))) {
+        const user = await User_1.default.findOne({ username });
+        if (!user || !user.passwordHash || !(await bcryptjs_1.default.compare(password, user.passwordHash))) {
             throw new Error('Invalid credentials');
         }
-        const token = jsonwebtoken_1.default.sign({ userId: user._id }, JWT_SECRET, { expiresIn: '1h' }); // Use _id for MongoDB
+        const token = jsonwebtoken_1.default.sign({ userId: user._id }, JWT_SECRET, { expiresIn: '1h' });
         return token;
     }
     static async authenticateWithWallet(address, message, signature, username) {
@@ -34,9 +34,17 @@ class AuthService {
         if (recoveredAddress.toLowerCase() !== address.toLowerCase()) {
             throw new Error("Invalid signature");
         }
-        // Check if user exists
+        // Check if the username already exists in the database
+        if (username) {
+            const existingUserWithUsername = await User_1.default.findOne({ username });
+            // If the username exists, ensure it belongs to the same wallet address
+            if (existingUserWithUsername && existingUserWithUsername.walletAddress.toLowerCase() !== address.toLowerCase()) {
+                throw new Error("Username is already taken by another user");
+            }
+        }
+        // Check if the user exists based on wallet address
         let user = await User_1.default.findOne({ walletAddress: address });
-        // If the user does not exist, create a new one with the provided username
+        // If the user does not exist, register them with the provided username
         if (!user) {
             if (!username) {
                 throw new Error("Username is required for new users");
