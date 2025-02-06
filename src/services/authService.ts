@@ -19,15 +19,20 @@ export class AuthService {
     }
 
     static async login(username: string, password: string): Promise<string> {
-        const user = await User.findOne({ username }); // Use Mongoose syntax
-        if (!user || !(await bcrypt.compare(password, user.passwordHash))) {
+        const user = await User.findOne({ username });
+        if (!user || !user.passwordHash || !(await bcrypt.compare(password, user.passwordHash))) {
             throw new Error('Invalid credentials');
         }
-        const token = jwt.sign({ userId: user._id }, JWT_SECRET, { expiresIn: '1h' }); // Use _id for MongoDB
+        const token = jwt.sign({ userId: user._id }, JWT_SECRET, { expiresIn: '1h' });
         return token;
     }
 
-    static async authenticateWithWallet(address: string, message: string, signature: string, username?: string): Promise<string> {
+    static async authenticateWithWallet(
+        address: string,
+        message: string,
+        signature: string,
+        username?: string
+    ): Promise<string> {
         // Recover the address from the signed message
         const recoveredAddress = ethers.verifyMessage(message, signature);
 
@@ -35,14 +40,25 @@ export class AuthService {
             throw new Error("Invalid signature");
         }
 
-        // Check if user exists
+        // Check if the username already exists in the database
+        if (username) {
+            const existingUserWithUsername = await User.findOne({ username });
+
+            // If the username exists, ensure it belongs to the same wallet address
+            if (existingUserWithUsername && existingUserWithUsername.walletAddress.toLowerCase() !== address.toLowerCase()) {
+                throw new Error("Username is already taken by another user");
+            }
+        }
+
+        // Check if the user exists based on wallet address
         let user = await User.findOne({ walletAddress: address });
 
-        // If the user does not exist, create a new one with the provided username
+        // If the user does not exist, register them with the provided username
         if (!user) {
             if (!username) {
                 throw new Error("Username is required for new users");
             }
+
             user = new User({ walletAddress: address, username });
             await user.save();
         } else if (username && user.username !== username) {
@@ -59,6 +75,7 @@ export class AuthService {
 
         return token;
     }
+
 
     static verifyToken(token: string): any {
         return jwt.verify(token, JWT_SECRET);
