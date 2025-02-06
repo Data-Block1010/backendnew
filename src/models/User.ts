@@ -17,7 +17,7 @@ const UserSchema: Schema = new Schema({
     },
     passwordHash: {
         type: String,
-        required: true,
+        
     },
     isActive: {
         type: Boolean,
