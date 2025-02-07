@@ -29,36 +29,49 @@ class AuthService {
         return token;
     }
     static async authenticateWithWallet(address, message, signature, username) {
-        // Recover the address from the signed message
-        const recoveredAddress = ethers_1.ethers.verifyMessage(message, signature);
-        if (recoveredAddress.toLowerCase() !== address.toLowerCase()) {
-            throw new Error("Invalid signature");
-        }
-        // Check if the username already exists in the database
-        if (username) {
-            const existingUserWithUsername = await User_1.default.findOne({ username });
-            // If the username exists, ensure it belongs to the same wallet address
-            if (existingUserWithUsername && existingUserWithUsername.walletAddress.toLowerCase() !== address.toLowerCase()) {
-                throw new Error("Username is already taken by another user");
+        try {
+            console.log("Starting wallet authentication...");
+            console.log(`Received Address: ${address}`);
+            console.log(`Received Message: ${message}`);
+            console.log(`Received Signature: ${signature}`);
+            console.log(`Received Username: ${username}`);
+            // Recover the address from the signed message
+            const recoveredAddress = ethers_1.ethers.verifyMessage(message, signature);
+            console.log(`Recovered Address: ${recoveredAddress}`);
+            if (recoveredAddress.toLowerCase() !== address.toLowerCase()) {
+                throw new Error("Invalid signature: Recovered address does not match provided address");
             }
-        }
-        // Check if the user exists based on wallet address
-        let user = await User_1.default.findOne({ walletAddress: address });
-        // If the user does not exist, register them with the provided username
-        if (!user) {
-            if (!username) {
-                throw new Error("Username is required for new users");
+            // Check if the username already exists in the database
+            if (username) {
+                const existingUserWithUsername = await User_1.default.findOne({ username });
+                if (existingUserWithUsername && existingUserWithUsername.walletAddress.toLowerCase() !== address.toLowerCase()) {
+                    throw new Error("Username is already taken by another user");
+                }
             }
-            user = new User_1.default({ walletAddress: address, username });
-            await user.save();
+            // Check if the user exists based on wallet address
+            let user = await User_1.default.findOne({ walletAddress: address });
+            if (!user) {
+                if (!username) {
+                    throw new Error("Username is required for new users");
+                }
+                user = new User_1.default({ walletAddress: address, username });
+                await user.save();
+            }
+            else if (username && user.username !== username) {
+                throw new Error("Username cannot be changed after registration");
+            }
+            // Generate a JWT token
+            const token = jsonwebtoken_1.default.sign({ userId: user._id, walletAddress: address, username: user.username }, JWT_SECRET, { expiresIn: "1h" });
+            return token;
         }
-        else if (username && user.username !== username) {
-            // Prevent username changes after first registration
-            throw new Error("Username cannot be changed after registration");
+        catch (error) {
+            console.error("Wallet authentication error:", error);
+            throw {
+                status: 400,
+                message: error instanceof Error ? error.message : "An unknown error occurred during authentication",
+                details: error instanceof Error ? error.stack : null
+            };
         }
-        // Generate a JWT token including username and walletAddress
-        const token = jsonwebtoken_1.default.sign({ userId: user._id, walletAddress: address, username: user.username }, JWT_SECRET, { expiresIn: "1h" });
-        return token;
     }
     static verifyToken(token) {
         return jsonwebtoken_1.default.verify(token, JWT_SECRET);
