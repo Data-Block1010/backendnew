@@ -38,27 +38,34 @@ class AuthService {
             // Recover the address from the signed message
             const recoveredAddress = ethers_1.ethers.verifyMessage(message, signature);
             console.log(`Recovered Address: ${recoveredAddress}`);
+            if (!recoveredAddress || !address) {
+                throw new Error("Invalid signature: Recovered address or provided address is missing");
+            }
             if (recoveredAddress.toLowerCase() !== address.toLowerCase()) {
                 throw new Error("Invalid signature: Recovered address does not match provided address");
             }
             // Check if the username already exists in the database
             if (username) {
                 const existingUserWithUsername = await User_1.default.findOne({ username });
-                if (existingUserWithUsername && existingUserWithUsername.walletAddress.toLowerCase() !== address.toLowerCase()) {
+                if (existingUserWithUsername &&
+                    existingUserWithUsername.walletAddress &&
+                    existingUserWithUsername.walletAddress.toLowerCase() !== address.toLowerCase()) {
                     throw new Error("Username is already taken by another user");
                 }
             }
             // Check if the user exists based on wallet address
             let user = await User_1.default.findOne({ walletAddress: address });
             if (!user) {
+                // If user does not exist, create a new one
                 if (!username) {
                     throw new Error("Username is required for new users");
                 }
                 user = new User_1.default({ walletAddress: address, username });
                 await user.save();
             }
-            else if (username && user.username !== username) {
-                throw new Error("Username cannot be changed after registration");
+            else {
+                // If user exists, just return a token, no need to check username
+                console.log("User already exists, logging in...");
             }
             // Generate a JWT token
             const token = jsonwebtoken_1.default.sign({ userId: user._id, walletAddress: address, username: user.username }, JWT_SECRET, { expiresIn: "1h" });

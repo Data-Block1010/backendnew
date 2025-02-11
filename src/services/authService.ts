@@ -16,7 +16,7 @@ export class AuthService {
         const passwordHash = await bcrypt.hash(password, 10);
         const user = new User({ username, passwordHash }); // Create a new instance of User
         await user.save(); // Save the user to the database
-    }
+    }   
 
     static async login(username: string, password: string): Promise<string> {
         const user = await User.findOne({ username });
@@ -44,15 +44,23 @@ export class AuthService {
             const recoveredAddress = ethers.verifyMessage(message, signature);
             console.log(`Recovered Address: ${recoveredAddress}`);
     
+
+            if (!recoveredAddress || !address) {
+                throw new Error("Invalid signature: Recovered address or provided address is missing");
+            }
+
             if (recoveredAddress.toLowerCase() !== address.toLowerCase()) {
                 throw new Error("Invalid signature: Recovered address does not match provided address");
             }
+
     
             // Check if the username already exists in the database
             if (username) {
                 const existingUserWithUsername = await User.findOne({ username });
     
-                if (existingUserWithUsername && existingUserWithUsername.walletAddress.toLowerCase() !== address.toLowerCase()) {
+                if (existingUserWithUsername && 
+                    existingUserWithUsername.walletAddress && 
+                    existingUserWithUsername.walletAddress.toLowerCase() !== address.toLowerCase()) {
                     throw new Error("Username is already taken by another user");
                 }
             }
@@ -61,15 +69,17 @@ export class AuthService {
             let user = await User.findOne({ walletAddress: address });
     
             if (!user) {
+                // If user does not exist, create a new one
                 if (!username) {
                     throw new Error("Username is required for new users");
                 }
-    
                 user = new User({ walletAddress: address, username });
                 await user.save();
-            } else if (username && user.username !== username) {
-                throw new Error("Username cannot be changed after registration");
+            } else {
+                // If user exists, just return a token, no need to check username
+                console.log("User already exists, logging in...");
             }
+            
     
             // Generate a JWT token
             const token = jwt.sign(
