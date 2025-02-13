@@ -164,7 +164,7 @@ AppDataSource.initialize()
     *     requestBody:
     *       required: true
     *       content:
-    *         application/json:
+    *         multipart/form-data:
     *           schema:
     *             type: object
     *             required:
@@ -183,6 +183,7 @@ AppDataSource.initialize()
     *                 type: string
     *               email:
     *                 type: string
+    *                 format: email
     *               integrationPurpose:
     *                 type: string
     *               maxUsers:
@@ -191,12 +192,16 @@ AppDataSource.initialize()
     *                 type: string
     *               logo:
     *                 type: string
+    *                 format: binary
+    *                 description: Upload the company logo as an image file
     *               walletAddress:
     *                 type: string
     *               businessDocuments:
     *                 type: array
     *                 items:
     *                   type: string
+    *                   format: binary
+    *                   description: Upload business documents as files
     *               kycRequirements:
     *                 type: array
     *                 items:
@@ -211,34 +216,55 @@ AppDataSource.initialize()
     *       500:
     *         description: Server error
     */
-    app.post('/api/companies/signup', async (req, res) => {
+    app.post('/api/companies/signup', upload.fields([
+        { name: 'logo', maxCount: 1 },
+        { name: 'businessDocuments', maxCount: 5 }
+    ]), async (req, res) => {
+        var _a;
         try {
-            const { name, website, email, integrationPurpose, maxUsers, projectDescription, logo, walletAddress } = req.body;
-            if (!name || !website || !email || !integrationPurpose || !maxUsers ||
-                !projectDescription || !logo || !walletAddress) {
-                return res.status(400).json({
-                    error: 'Missing required fields'
-                });
+            const { name, website, email, integrationPurpose, maxUsers, projectDescription, walletAddress } = req.body;
+            const files = req.files;
+            const logo = (_a = files === null || files === void 0 ? void 0 : files.logo) === null || _a === void 0 ? void 0 : _a[0];
+            const businessDocuments = (files === null || files === void 0 ? void 0 : files.businessDocuments) || [];
+            // Validate required fields
+            if (!name || !website || !email || !integrationPurpose || !maxUsers || !projectDescription || !walletAddress || !logo) {
+                return res.status(400).json({ error: 'Missing required fields' });
             }
+            // Validate wallet address
             if (!(0, ethers_1.isAddress)(walletAddress)) {
-                return res.status(400).json({
-                    error: 'Invalid wallet address'
-                });
+                return res.status(400).json({ error: 'Invalid wallet address' });
             }
-            await CompanyController_1.CompanyController.signup(req, res);
-            await emailService.sendEmail(process.env.ADMIN_EMAIL || '', 'New Company Registration', `New company registration: ${name}
-            Website: ${website}
-            Email: ${email}
-            Integration Purpose: ${integrationPurpose}
-            Max Users: ${maxUsers}
-            Project Description: ${projectDescription}
-            Wallet: ${walletAddress}`);
+            // Convert maxUsers to integer
+            const parsedMaxUsers = parseInt(maxUsers, 10);
+            if (isNaN(parsedMaxUsers)) {
+                return res.status(400).json({ error: 'maxUsers must be a valid number' });
+            }
+            // Call the controller to process the signup
+            await CompanyController_1.CompanyController.signup({
+                name,
+                website,
+                email,
+                integrationPurpose,
+                maxUsers: parsedMaxUsers,
+                projectDescription,
+                walletAddress,
+                logo,
+                businessDocuments
+            }, res);
+            // Send admin notification email
+            await emailService.sendEmail(process.env.ADMIN_EMAIL || '', 'New Company Registration', `New company registration:
+            - Name: ${name}
+            - Website: ${website}
+            - Email: ${email}
+            - Integration Purpose: ${integrationPurpose}
+            - Max Users: ${maxUsers}
+            - Project Description: ${projectDescription}
+            - Wallet Address: ${walletAddress}`);
+            return res.status(201).json({ message: 'Company registered successfully' });
         }
         catch (error) {
             console.error('Company signup error:', error);
-            return res.status(500).json({
-                error: 'Failed to register company'
-            });
+            return res.status(500).json({ error: 'Failed to register company' });
         }
     });
     /**
