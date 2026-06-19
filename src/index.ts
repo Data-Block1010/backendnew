@@ -62,17 +62,32 @@ AppDataSource.initialize()
           app.use(helmet());
 
           // Enable CORS for all routes
-          const corsOptions = {
-            origin: [
-                'http://localhost:3000', 
+          const allowedOrigins = [
+                'http://localhost:3000',
                 'https://backendnew-4hei.onrender.com',
                 'https://backendnew-wd64.onrender.com',
-                'https://secure-data.on-fleek.app', 
+                'https://backendnew-stellar.onrender.com',
+                'https://secure-data.on-fleek.app',
                 'https://securedata.on-fleek.app',
                 'https://sd-svc.onrender.com',
                 'https://sd-svc.vercel.app',
                 'https://www.guardzero.xyz'
-            ],
+          ];
+          // Vercel gives every deployment (production, preview, branch) of
+          // the sd-svc project its own *.vercel.app subdomain, e.g.
+          // sd-svc-tau.vercel.app or sd-svc-git-main-xyz.vercel.app, so a
+          // static list can't keep up. Allow any of those in addition to
+          // the fixed allow-list above.
+          const vercelPreviewPattern = /^https:\/\/sd-svc(-[a-z0-9-]+)?\.vercel\.app$/;
+
+          const corsOptions = {
+            origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
+                if (!origin || allowedOrigins.includes(origin) || vercelPreviewPattern.test(origin)) {
+                    callback(null, true);
+                } else {
+                    callback(new Error(`Origin ${origin} not allowed by CORS`));
+                }
+            },
             methods: ['GET', 'POST', 'PUT', 'DELETE'],
             allowedHeaders: ['Content-Type', 'Authorization'],
             credentials: true, // Allow credentials (cookies, authorization headers, etc.)
