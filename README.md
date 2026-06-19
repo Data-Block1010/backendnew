@@ -1,15 +1,15 @@
-# README: zkSync-based Data Storage on Lisk using Zero-Knowledge Proofs
+# README: Stellar/Soroban-based Data Storage with Zero-Knowledge Proofs
 
 ## Overview
 
-This project provides a decentralized data storage solution deployed on Lisk, utilizing zkSync for efficient L2 scaling, and incorporating zero-knowledge proofs for enhanced data privacy. Users can store, update, and manage access to their data on-chain, while proofs ensure that sensitive information is handled securely.
+This project provides a decentralized data storage solution deployed on Stellar via Soroban smart contracts, incorporating zero-knowledge proofs for enhanced data privacy. Users can store, update, and manage access to their data on-chain, while proofs ensure that sensitive information is handled securely.
 
 ### Key Technologies
 
-- **zkSync**: A Layer 2 scaling solution built on Ethereum, providing faster and cheaper transactions.
-- **Lisk Blockchain**: A decentralized application platform with SDKs for developers, used for deploying this smart contract.
+- **Stellar**: A fast, low-cost blockchain network used to settle on-chain data and access-control operations.
+- **Soroban**: Stellar's smart contract platform (Rust/WASM), used for the on-chain `data-storage` contract — see [soroban-contract](https://github.com/Data-Block1010/soroban-contract).
 - **Zero-Knowledge Proofs**: A cryptographic method that allows secure verification of data without revealing the data itself.
-- **Web3**: A collection of libraries for interacting with Ethereum-like blockchains (including zkSync and Lisk).
+- **Stellar SDK**: Libraries for interacting with the Stellar network and invoking Soroban contracts.
 - **Pinata (IPFS)**: Used for decentralized file storage, where data is stored, encrypted, and retrieved.
 
 ---
@@ -18,15 +18,17 @@ This project provides a decentralized data storage solution deployed on Lisk, ut
 
 ### Smart Contracts
 
-- **DataStorage.sol**: A Solidity contract that enables users to:
+- **data-storage** (Soroban, Rust): A contract that enables users to:
   - Store data hashes.
   - Update stored data.
   - Transfer data ownership.
-  - Grant or revoke access rights to specific addresses.
+  - Grant or revoke access rights to specific accounts.
+
+  See [soroban-contract](https://github.com/Data-Block1010/soroban-contract) for the contract source and tests.
 
 ### Backend
 
-- **ZkSyncService.ts**: Handles the interaction between the smart contract on zkSync and the backend server.
+- **StellarService.ts**: Handles the interaction between the Soroban contract and the backend server.
 - **DataController.ts**: Manages the data operations (storing, updating, reading data) and zero-knowledge proof generation.
 - **Pinata Service**: Encrypts data using user-provided secret keys, uploads encrypted data to IPFS, and retrieves data as needed.
 - **Authentication**: Uses JWT tokens to manage user access and authentication.
@@ -34,7 +36,7 @@ This project provides a decentralized data storage solution deployed on Lisk, ut
 ### Smart Contract Features
 
 - **Data Hash Storage**: Users can store and manage data hashes on-chain.
-- **Grant/Revoke Access**: Users can grant or revoke access to specific addresses, allowing them to view or modify the data.
+- **Grant/Revoke Access**: Users can grant or revoke access to specific accounts, allowing them to view or modify the data.
 - **Zero-Knowledge Proof Generation**: Users can generate cryptographic proofs without revealing the underlying data.
 
 ---
@@ -44,25 +46,25 @@ This project provides a decentralized data storage solution deployed on Lisk, ut
 ### Prerequisites
 
 1. **Node.js** and **npm**: Ensure you have Node.js (v14+) installed.
-2. **Hardhat**: For compiling and deploying the smart contract.
+2. **Rust + Soroban CLI**: For building and deploying the Soroban smart contract.
 3. **IPFS Account**: For decentralized file storage (Pinata used for this example).
-4. **zkSync and Lisk Wallet**: For managing accounts and transactions.
+4. **Stellar Account**: For managing accounts and transactions (testnet or mainnet).
 
 ### Environment Variables
 
 Create a `.env` file in the root directory with the following variables:
 
 ```bash
-# Blockchain configuration
-SEPOLIA_RPC_URL=<Your-Sepolia-Node-RPC-URL>
-ZKSYNC_RPC_URL=<Your-zkSync-Node-RPC-URL>
+# Stellar / Soroban configuration
+STELLAR_NETWORK=<testnet-or-mainnet>
+STELLAR_RPC_URL=<Your-Soroban-RPC-URL>
 
-# zkSync and Contract keys
-YOUR_CONTRACT_ADDRESS=<Your-Contract-Address>
-ACCOUNT_PRIVATE_KEY=<Your-Private-Key>
+# Contract and account keys
+CONTRACT_ID=<Your-Soroban-Contract-Id>
+ACCOUNT_SECRET_KEY=<Your-Stellar-Secret-Key>
 
-# Lisk account for contract ownership
-HARDCODED_FROM_ADDRESS=<Your-Lisk-Address>
+# Stellar account for contract ownership
+CONTRACT_OWNER_ADDRESS=<Your-Stellar-Address>
 
 # Pinata API Keys
 PINATA_API_KEY=<Your-Pinata-API-Key>
@@ -75,8 +77,8 @@ PINATA_SECRET_API_KEY=<Your-Pinata-Secret-API-Key>
 
 1. **Clone the Repository**:
     ```bash
-    git clone https://github.com/your-username/project-name.git
-    cd project-name
+    git clone https://github.com/Data-Block1010/backendnew.git
+    cd backendnew
     ```
 
 2. **Install Dependencies**:
@@ -84,16 +86,19 @@ PINATA_SECRET_API_KEY=<Your-Pinata-Secret-API-Key>
     npm install
     ```
 
-3. **Compile the Contract**:
-    Compile the Solidity smart contracts using Hardhat:
+3. **Build the Contract**:
+    Build the Soroban smart contract (from the [soroban-contract](https://github.com/Data-Block1010/soroban-contract) repo):
     ```bash
-    npx hardhat compile
+    cargo build --target wasm32v1-none --release -p data-storage
     ```
 
 4. **Deploy the Contract**:
-    Deploy the contract on zkSync (Lisk backend):
+    Deploy the contract to Stellar:
     ```bash
-    npx hardhat run scripts/deploy.ts --network zkSync
+    stellar contract deploy \
+      --wasm target/wasm32v1-none/release/data_storage.wasm \
+      --source <account> \
+      --network testnet
     ```
 
 5. **Run the Server**:
@@ -131,20 +136,20 @@ PINATA_SECRET_API_KEY=<Your-Pinata-Secret-API-Key>
 
 ## Challenges and Solutions
 
-### 1. **Bytes32 Compatibility**:
-   - Initially, storing data hashes as `string` caused issues with data size and ABI compatibility. Switching to `bytes32` solved this problem by ensuring consistent data sizes.
+### 1. **String Compatibility**:
+   - Initially, storing data hashes required careful handling of size and contract type compatibility. Standardizing on Soroban's `String` type for hashes solved this by ensuring consistent data sizes.
 
 ### 2. **Zero-Knowledge Proof Integration**:
    - Zero-knowledge proof generation was complex and required careful integration with cryptographic libraries. We successfully integrated proof generation using trusted circuits and cryptographic libraries, allowing users to securely verify data without revealing sensitive information.
 
-### 3. **Gas Optimization**:
-   - Handling large datasets and access control for multiple users can lead to high gas costs. By implementing batch access control methods (`batchGrantAccess` and `batchRevokeAccess`), gas costs were minimized.
+### 3. **Fee and Resource Optimization**:
+   - Handling large datasets and access control for multiple users can lead to higher transaction resource costs. By keeping access-control records minimal and using Soroban's persistent storage efficiently, resource costs were minimized.
 
-### 4. **Lisk and zkSync Integration**:
-   - Deploying the smart contract on zkSync was smooth, but connecting zkSync with Lisk for more advanced logic required custom plugin integration. The `web3-plugin-zksync` was used to bridge zkSync functionality with Lisk backend requirements.
+### 4. **Stellar/Soroban Integration**:
+   - Wiring the backend's chain-interaction layer to the Stellar SDK and invoking the Soroban contract's access-control functions (`Address::require_auth()`) required careful handling of account authorization and transaction submission.
 
 ### 5. **Error Handling and Contract Interactions**:
-   - Encountering various ABI decoding errors and gas issues while reading data from the contract highlighted the need to carefully manage blockchain interaction. We improved error handling and optimized ABI usage for contract calls.
+   - Encountering various decoding errors and resource-fee issues while reading data from the contract highlighted the need to carefully manage blockchain interaction. We improved error handling and optimized contract-invocation usage for backend calls.
 
 ---
 
@@ -158,4 +163,4 @@ PINATA_SECRET_API_KEY=<Your-Pinata-Secret-API-Key>
 
 ## Conclusion
 
-This project leverages zkSync's scalability and Lisk's dApp capabilities to build a decentralized, privacy-preserving data storage system. By combining zero-knowledge proofs and encrypted data storage on IPFS, users can securely manage their data without compromising privacy.
+This project leverages Stellar's speed and low fees, together with Soroban's smart contract platform, to build a decentralized, privacy-preserving data storage system. By combining zero-knowledge proofs and encrypted data storage on IPFS, users can securely manage their data without compromising privacy.
