@@ -16,8 +16,8 @@
     "emitDecoratorMetadata": true,
     
                            // Specify module code generation
-    //"outDir": "./dist",                      // Redirect output structure to the dist directory
-    //"rootDir": "./src",  
+    "outDir": "./dist",                      // Redirect output structure to the dist directory
+    "rootDir": "./src",
   
                         // Specify the root directory of input files
 
