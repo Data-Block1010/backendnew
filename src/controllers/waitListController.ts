@@ -38,15 +38,18 @@ export class WaitlistController {
         });
   
         await waitlistEntry.save();
-  
-        // Send confirmation email
-        const emailService = new EmailService();
-        await emailService.sendWaitlistConfirmation(waitlistEntry.email, waitlistEntry.name, waitlistEntry.position);
-  
+
         res.status(201).json({
           message: 'Added to waitlist successfully',
           position,
         });
+
+        // Send confirmation email in the background. This must not block
+        // or fail the signup response if SMTP is slow/misconfigured.
+        const emailService = new EmailService();
+        emailService
+          .sendWaitlistConfirmation(waitlistEntry.email, waitlistEntry.name, waitlistEntry.position)
+          .catch((error) => console.error('Failed to send waitlist confirmation email:', error));
       } catch (error) {
         console.error('Error in join waitlist:', error);
         res.status(500).json({ error: 'Internal server error' });
